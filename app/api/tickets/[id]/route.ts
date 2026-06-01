@@ -15,10 +15,12 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
         assignee: true,
         category: true,
         subCategory: true,
+        equipment: true,
         attachments: true,
         rating: true,
         messages: { include: { author: true, attachments: true }, orderBy: { createdAt: "asc" } },
-        history: { include: { actor: true }, orderBy: { createdAt: "asc" } }
+        history: { include: { actor: true }, orderBy: { createdAt: "asc" } },
+        remoteSessions: { orderBy: { createdAt: "desc" } }
       }
     });
     if (!ticket) return NextResponse.json({ error: "Chamado nao encontrado" }, { status: 404 });

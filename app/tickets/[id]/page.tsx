@@ -3,6 +3,7 @@ import { Role } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { PriorityBadge, StatusBadge } from "@/components/status-badge";
+import { RemoteAccessPanel } from "@/components/remote-access-panel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -21,6 +22,8 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
       assignee: true,
       category: true,
       subCategory: true,
+      equipment: true,
+      remoteSessions: { orderBy: { createdAt: "desc" } },
       rating: true,
       messages: { include: { author: true }, orderBy: { createdAt: "asc" } },
       history: { include: { actor: true }, orderBy: { createdAt: "asc" } }
@@ -74,6 +77,36 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
           </CardContent>
         </Card>
         <div className="space-y-5">
+          <Card>
+            <CardHeader>
+              <CardTitle>Equipamento vinculado</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {ticket.equipment ? (
+                <div className="space-y-3 text-sm text-muted-foreground">
+                  <p>Maquina: {ticket.equipment.machineName}</p>
+                  <p>Hostname: {ticket.equipment.hostname}</p>
+                  <p>IP: {ticket.equipment.ipAddress}</p>
+                  <p>Usuario: {ticket.equipment.currentUser ?? "N/A"}</p>
+                  <p>Sistema: {ticket.equipment.operatingSystem}</p>
+                  <p>Status: {ticket.equipment.isOnline ? "Online" : "Offline"}</p>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Nenhum equipamento vinculado a este chamado.</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {ticket.equipment && (
+            <RemoteAccessPanel
+              ticketId={ticket.id}
+              equipmentId={ticket.equipment.id}
+              host={ticket.equipment.hostname}
+              ip={ticket.equipment.ipAddress}
+              sessions={ticket.remoteSessions}
+            />
+          )}
+
           <Card>
             <CardHeader><CardTitle>Timeline</CardTitle></CardHeader>
             <CardContent className="space-y-4">

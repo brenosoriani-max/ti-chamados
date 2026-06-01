@@ -6,21 +6,34 @@ const prisma = new PrismaClient();
 async function main() {
   const passwordHash = await bcrypt.hash("123456", 10);
 
+  const [tiDepartment, financeDepartment] = await Promise.all([
+    prisma.department.upsert({
+      where: { name: "TI" },
+      update: {},
+      create: { name: "TI", description: "Tecnologia da informacao" }
+    }),
+    prisma.department.upsert({
+      where: { name: "Financeiro" },
+      update: {},
+      create: { name: "Financeiro", description: "Departamento Financeiro" }
+    })
+  ]);
+
   const [admin, tecnico, cliente] = await Promise.all([
     prisma.user.upsert({
       where: { email: "admin@empresa.com" },
       update: {},
-      create: { name: "Admin Service Desk", email: "admin@empresa.com", passwordHash, role: Role.ADMIN, department: "TI" }
+      create: { name: "Admin Service Desk", email: "admin@empresa.com", passwordHash, role: Role.ADMIN, department: "TI", departmentId: tiDepartment.id }
     }),
     prisma.user.upsert({
       where: { email: "tecnico@empresa.com" },
       update: {},
-      create: { name: "Marina Suporte", email: "tecnico@empresa.com", passwordHash, role: Role.TECNICO, department: "Suporte N2" }
+      create: { name: "Marina Suporte", email: "tecnico@empresa.com", passwordHash, role: Role.TECNICO, department: "Suporte N2", departmentId: tiDepartment.id }
     }),
     prisma.user.upsert({
       where: { email: "cliente@empresa.com" },
       update: {},
-      create: { name: "Carlos Cliente", email: "cliente@empresa.com", passwordHash, role: Role.CLIENTE, phone: "(11) 99999-0000" }
+      create: { name: "Carlos Cliente", email: "cliente@empresa.com", passwordHash, role: Role.CLIENTE, phone: "(11) 99999-0000", departmentId: financeDepartment.id }
     })
   ]);
 
@@ -28,6 +41,44 @@ async function main() {
     where: { userId: cliente.id },
     update: {},
     create: { userId: cliente.id, company: "Acme Operacoes", document: "00.000.000/0001-00" }
+  });
+
+  await prisma.technician.upsert({
+    where: { userId: tecnico.id },
+    update: {},
+    create: {
+      userId: tecnico.id,
+      phone: "(11) 99999-0000",
+      certification: ["ITIL", "Windows 11"],
+      isActive: true
+    }
+  });
+
+  const financeMachine = await prisma.equipment.upsert({
+    where: { patrimony: "EQ-1001" },
+    update: {
+      lastCommunication: new Date(),
+      isOnline: true,
+      status: "ONLINE"
+    },
+    create: {
+      patrimony: "EQ-1001",
+      machineName: "PC-FINANCEIRO-01",
+      hostname: "PC-FINANCEIRO-01",
+      ipAddress: "192.168.0.15",
+      currentUser: "Carlos Cliente",
+      operatingSystem: "Windows 11 Pro",
+      windowsVersion: "23H2",
+      processor: "Intel Core i7",
+      ramGb: 16,
+      diskSpaceGb: 512,
+      lastUpdateAt: new Date(),
+      lastCommunication: new Date(),
+      isOnline: true,
+      status: "ONLINE",
+      departmentId: financeDepartment.id,
+      responsibleUserId: cliente.id
+    }
   });
 
   for (const sla of [
@@ -76,6 +127,7 @@ async function main() {
         assigneeId: tecnico.id,
         categoryId: infraestrutura.id,
         subCategoryId: infraestrutura.subCategories[0]?.id,
+        equipmentId: financeMachine.id,
         responseDueAt: new Date(now.getTime() + 4 * 60 * 60 * 1000),
         slaDueAt: new Date(now.getTime() + 8 * 60 * 60 * 1000),
         messages: {

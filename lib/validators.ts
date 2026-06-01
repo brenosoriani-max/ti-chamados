@@ -34,6 +34,35 @@ export const ratingSchema = z.object({
   comment: z.string().max(500).optional()
 });
 
+export const equipmentCreateSchema = z.object({
+  patrimony: z.string().min(1),
+  machineName: z.string().min(1),
+  hostname: z.string().min(1),
+  ipAddress: z.string().min(1),
+  currentUser: z.string().optional(),
+  operatingSystem: z.string().min(1),
+  windowsVersion: z.string().optional(),
+  processor: z.string().optional(),
+  ramGb: z.number().int().positive().optional(),
+  diskSpaceGb: z.number().int().positive().optional(),
+  departmentId: z.string().optional(),
+  responsibleUserId: z.string().optional(),
+  isOnline: z.boolean().default(false),
+  status: z.string().optional()
+});
+
+export const equipmentUpdateSchema = equipmentCreateSchema.partial();
+
+export const remoteSessionCreateSchema = z.object({
+  equipmentId: z.string().min(1),
+  host: z.string().min(1),
+  ip: z.string().min(1),
+  sessionId: z.number().int().nonnegative(),
+  mode: z.enum(["shadow", "view", "control"]).default("shadow"),
+  connectionType: z.string().min(1).default("shadow"),
+  reason: z.string().max(500).optional()
+});
+
 export const userCreateSchema = z.object({
   name: z.string().min(3),
   email: z.string().email(),
