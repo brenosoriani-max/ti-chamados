@@ -1,13 +1,12 @@
-import { Paperclip, Send, Star } from "lucide-react";
+import { Star } from "lucide-react";
 import { Role } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { PriorityBadge, StatusBadge } from "@/components/status-badge";
 import { RemoteAccessPanel } from "@/components/remote-access-panel";
-import { Button } from "@/components/ui/button";
+import { TicketMessageForm } from "@/components/ticket-message-form";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { formatDateTime } from "@/lib/utils";
@@ -32,7 +31,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
   });
 
   if (!ticket) {
-    return <AppShell><p>Chamado nao encontrado.</p></AppShell>;
+    return <AppShell><p>Chamado não encontrado.</p></AppShell>;
   }
 
   const visibleMessages = ticket.messages.filter((message) => !message.isInternal || session.role !== Role.CLIENTE);
@@ -70,23 +69,26 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
-                {visibleMessages.map((message) => (
-                  <div key={message.id} className={`rounded-lg border p-4 ${message.isInternal ? "border-amber-500/30 bg-amber-500/10" : "border-white/10 bg-background/50"}`}>
-                    <div className="mb-2 flex items-center justify-between gap-3 text-xs text-muted-foreground">
-                      <span className="font-semibold">{message.author.name}{message.isInternal ? " - 🔒 Interno" : ""}</span>
-                      <span>{formatDateTime(message.createdAt)}</span>
+                {visibleMessages.length > 0 ? (
+                  visibleMessages.map((message) => (
+                    <div key={message.id} className={`rounded-lg border p-4 ${message.isInternal ? "border-amber-500/30 bg-amber-500/10" : "border-white/10 bg-background/50"}`}>
+                      <div className="mb-2 flex items-center justify-between gap-3 text-xs text-muted-foreground">
+                        <span className="font-semibold">{message.author.name}{message.isInternal ? " - 🔒 Interno" : ""}</span>
+                        <span>{formatDateTime(message.createdAt)}</span>
+                      </div>
+                      <p className="text-sm leading-relaxed">{message.body}</p>
                     </div>
-                    <p className="text-sm leading-relaxed">{message.body}</p>
+                  ))
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-sm text-muted-foreground italic">Nenhuma mensagem ainda. Seja o primeiro a comentar.</p>
                   </div>
-                ))}
+                )}
               </div>
-              <form className="space-y-4 border-t border-white/10 pt-4">
-                <Textarea placeholder="Escrever resposta..." className="resize-none" />
-                <div className="flex items-center justify-between">
-                  <Button type="button" variant="outline" size="sm"><Paperclip className="h-4 w-4 mr-2" /> Anexar</Button>
-                  <Button type="button" size="sm"><Send className="h-4 w-4 mr-2" /> Enviar</Button>
-                </div>
-              </form>
+              <TicketMessageForm
+                ticketId={ticket.id}
+                canSendInternal={session.role !== Role.CLIENTE}
+              />
             </CardContent>
           </Card>
         </div>
