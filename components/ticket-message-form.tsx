@@ -64,54 +64,65 @@ export function TicketMessageForm({ ticketId, canSendInternal = false }: TicketM
   }
 
   return (
-    <form onSubmit={handleSubmit} ref={formRef} className="space-y-4 border-t border-white/10 pt-4">
-      <div className="space-y-3">
-        <Textarea
-          placeholder="Escrever resposta..."
-          className="resize-none min-h-[140px] rounded-2xl border border-white/10 bg-background/80 p-3 focus:border-primary focus:ring-2 focus:ring-primary/10"
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          disabled={isLoading}
-          required
-        />
+    <form onSubmit={handleSubmit} ref={formRef} className="space-y-4 pt-6 border-t border-white/5">
+      <div className="space-y-4">
+        <div className="relative group">
+          <Textarea
+            placeholder="Escrever resposta..."
+            className="group-focus-within:ring-primary/20 transition-all duration-300 shadow-inner min-h-[160px]"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            disabled={isLoading}
+            required
+          />
+          <div className="absolute bottom-3 right-3 pointer-events-none opacity-20 group-focus-within:opacity-100 transition-opacity">
+            <Send className="h-4 w-4 text-primary" />
+          </div>
+        </div>
         
         {error && (
-          <div className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">
+          <div className="text-[10px] font-bold uppercase tracking-widest text-red-400 bg-red-400/5 border border-red-400/10 rounded-xl px-4 py-3">
             {error}
           </div>
         )}
         
         {success && (
-          <div className="text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-3 py-2">
+          <div className="text-[10px] font-bold uppercase tracking-widest text-emerald-400 bg-emerald-400/5 border border-emerald-400/10 rounded-xl px-4 py-3">
             ✓ Mensagem enviada com sucesso
           </div>
         )}
 
         {canSendInternal && (
-          <label className="flex flex-col gap-2 rounded-2xl border border-white/10 bg-background/80 p-3 text-sm sm:flex-row sm:items-center sm:justify-between">
-            <span className="text-muted-foreground">🔒 Comentário interno (só técnicos veem)</span>
+          <div className={`flex items-center justify-between rounded-2xl border transition-all duration-300 p-4 ${isInternal ? 'border-amber-500/30 bg-amber-500/5' : 'border-white/5 bg-white/5'}`}>
+            <div className="flex items-center gap-3">
+              <div className={`h-8 w-8 rounded-xl flex items-center justify-center transition-colors ${isInternal ? 'bg-amber-500/20 text-amber-500' : 'bg-muted text-muted-foreground'}`}>
+                {isInternal ? '🔒' : '🌐'}
+              </div>
+              <div className="flex flex-col">
+                <span className={`text-xs font-bold ${isInternal ? 'text-amber-500' : 'text-foreground'}`}>Comentário interno</span>
+                <span className="text-[10px] text-muted-foreground font-medium">Visível apenas para a equipe técnica</span>
+              </div>
+            </div>
             <input
               type="checkbox"
               checked={isInternal}
               onChange={(e) => setIsInternal(e.target.checked)}
               disabled={isLoading}
-              className="h-4 w-4 rounded border border-white/10 bg-background text-primary focus:ring-primary/50"
+              className="h-5 w-5 rounded-lg border-white/10 bg-black/20 text-primary focus:ring-primary/50 cursor-pointer"
             />
-          </label>
+          </div>
         )}
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
-        <Button type="submit" size="sm" disabled={isLoading} className="w-full sm:w-auto gap-2">
+      <div className="flex items-center justify-between gap-4">
+        <p className="text-[10px] text-muted-foreground font-medium italic">Shift + Enter para enviar rapidamente</p>
+        <Button type="submit" disabled={isLoading} className="rounded-full px-8 premium-gradient shadow-xl shadow-teal-500/10 hover:scale-105 active:scale-95 transition-all gap-2">
           {isLoading ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Enviando...
-            </>
+            <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
             <>
-              <Send className="h-4 w-4" />
-              Enviar
+              <span className="text-xs font-bold uppercase tracking-tighter">Enviar Mensagem</span>
+              <Send className="h-3 w-3" />
             </>
           )}
         </Button>

@@ -10,7 +10,9 @@ const badgeVariants = cva("inline-flex items-center rounded-md px-2 py-1 text-xs
       danger: "bg-red-500/10 text-red-600 dark:text-red-300",
       warning: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
       success: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
-      muted: "bg-muted text-muted-foreground"
+      muted: "bg-muted text-muted-foreground",
+      outline: "border border-border text-foreground bg-transparent",
+      glass: "bg-white/5 backdrop-blur-md border border-white/10 text-foreground"
     }
   },
   defaultVariants: { variant: "default" }

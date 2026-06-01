@@ -54,4 +54,20 @@
   body {
     @apply bg-background text-foreground antialiased;
   }
+
+  .glass-card {
+    @apply bg-card/60 backdrop-blur-md border border-white/10 shadow-xl;
+  }
+
+  .glass-header {
+    @apply bg-background/80 backdrop-blur-xl border-b border-white/5;
+  }
+
+  .premium-gradient {
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.8) 100%);
+  }
+
+  .vibrant-gradient {
+    background: linear-gradient(135deg, #0ea5e9 0%, #22c55e 100%);
+  }
 }
