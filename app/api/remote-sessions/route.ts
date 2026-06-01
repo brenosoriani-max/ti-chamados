@@ -3,6 +3,10 @@ import { Role } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/auth";
 
+/**
+ * GET /api/remote-sessions
+ * List all remote sessions (requires TECNICO or ADMIN role)
+ */
 export async function GET(_request: NextRequest) {
   await requireSession([Role.TECNICO, Role.ADMIN]);
 
@@ -10,9 +14,11 @@ export async function GET(_request: NextRequest) {
     include: {
       equipment: true,
       requestedBy: true,
-      ticket: true
+      ticket: true,
     },
-    orderBy: { updatedAt: "desc" }
+    orderBy: {
+      updatedAt: "desc",
+    },
   });
 
   return NextResponse.json(sessions);

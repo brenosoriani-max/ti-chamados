@@ -33,29 +33,29 @@ export default async function SuportePage() {
 
   return (
     <AppShell>
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold">Fila de suporte</h1>
-        <p className="text-sm text-muted-foreground">Kanban operacional com prioridade, SLA e responsavel.</p>
+      <div className="mb-8 space-y-2">
+        <h1 className="text-4xl font-bold">Fila de Suporte</h1>
+        <p className="text-base text-muted-foreground">Acompanhe os chamados em tempo real e gerenciar prioridades e SLA.</p>
       </div>
-      <section className="grid gap-4 md:grid-cols-4">
+      <section className="grid gap-4 md:grid-cols-4 mb-8">
         <StatCard label="Pendentes" value={pendentes} icon={Clock3} tone="text-amber-300" />
-        <StatCard label="Criticos" value={criticos} icon={AlertTriangle} tone="text-red-300" />
-        <StatCard label="Maquinas online" value={onlineMachines} icon={Monitor} tone="text-emerald-300" />
-        <StatCard label="Sessões ativas" value={activeSessions} icon={Wifi} tone="text-sky-300" />
+        <StatCard label="Críticos" value={criticos} icon={AlertTriangle} tone="text-red-300" />
+        <StatCard label="Máquinas Online" value={onlineMachines} icon={Monitor} tone="text-emerald-300" />
+        <StatCard label="Sessões Ativas" value={activeSessions} icon={Wifi} tone="text-sky-300" />
       </section>
-      <section className="mt-6 grid gap-4 xl:grid-cols-[2fr_380px]">
-        <div className="space-y-4">
-          <Card className="border-emerald-500/10 bg-emerald-500/5">
-            <CardHeader>
-              <div className="flex items-center justify-between gap-3">
+      <section className="grid gap-6 xl:grid-cols-[1fr_340px] mb-8">
+        <div className="space-y-6">
+          <Card className="border-emerald-500/20 bg-emerald-500/5 lg:sticky lg:top-20">
+            <CardHeader className="pb-4">
+              <div className="flex items-start justify-between gap-3">
                 <div>
-                  <CardTitle>Suporte remoto</CardTitle>
-                  <p className="text-sm text-muted-foreground">Acompanhe as conexões ativas e os últimos acessos feitos pelos técnicos.</p>
+                  <CardTitle className="text-lg">Suporte Remoto</CardTitle>
+                  <p className="text-xs text-muted-foreground mt-1">Últimas conexões ativas</p>
                 </div>
-                <Activity className="h-5 w-5 text-emerald-500" />
+                <Activity className="h-5 w-5 text-emerald-500 flex-shrink-0" />
               </div>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-3">
               {recentRemoteSessions.length > 0 ? (
                 <div className="space-y-3">
                   {recentRemoteSessions.map((session) => (
@@ -81,12 +81,12 @@ export default async function SuportePage() {
             </CardContent>
           </Card>
           <Card>
-            <CardHeader>
-              <CardTitle>Como usar</CardTitle>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg">Como Usar</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3 text-sm text-muted-foreground">
-              <p>Para iniciar suporte remoto, abra o chamado e selecione a sessão disponível do equipamento do usuário.</p>
-              <ul className="list-inside list-disc space-y-2">
+            <CardContent className="space-y-4 text-sm text-muted-foreground">
+              <p>Siga os passos abaixo para iniciar uma sessão remota com o cliente:</p>
+              <ul className="list-inside list-disc space-y-2 ml-0">
                 <li>Localize a máquina do cliente no ticket.</li>
                 <li>Escolha a sessão ativa e o modo de acesso.</li>
                 <li>Envie a solicitação e verifique o log.</li>
@@ -97,23 +97,23 @@ export default async function SuportePage() {
       </section>
       <section className="mt-6 grid min-h-[560px] gap-4 overflow-x-auto xl:grid-cols-5">
         {columns.map((column) => (
-          <div key={column} className="min-w-72 rounded-lg border bg-card/60">
-            <div className="flex items-center justify-between border-b p-3">
+          <div key={column} className="min-w-80 rounded-lg border border-white/10 bg-card/40 hover:bg-card/60 transition-colors">
+            <div className="flex items-center justify-between border-b border-white/10 p-4">
               <h2 className="text-sm font-semibold">{formatTicketStatus(column)}</h2>
-              <Badge variant="secondary">{tickets.filter((ticket) => ticket.status === column).length}</Badge>
+              <Badge variant="secondary" className="bg-primary/20 text-primary">{tickets.filter((ticket) => ticket.status === column).length}</Badge>
             </div>
-            <div className="space-y-3 p-3">
+            <div className="space-y-3 p-4">
               {tickets.filter((ticket) => ticket.status === column).map((ticket) => {
                 const hours = hoursUntil(ticket.slaDueAt);
                 return (
-                  <Card key={ticket.id} className="bg-background">
-                    <CardHeader className="p-4">
+                  <Card key={ticket.id} className="bg-background/60 border-white/10 hover:border-primary/30 transition-colors hover:shadow-md">
+                    <CardHeader className="p-3 pb-2">
                       <div className="flex items-start justify-between gap-2">
-                        <CardTitle className="text-sm">{ticket.number}</CardTitle>
+                        <CardTitle className="text-xs font-semibold text-muted-foreground">{ticket.number}</CardTitle>
                         <PriorityBadge priority={ticket.priority} />
                       </div>
                     </CardHeader>
-                    <CardContent className="space-y-3 p-4 pt-0">
+                    <CardContent className="space-y-2 p-3 pt-0">
                       <p className="text-sm font-medium">{ticket.title}</p>
                       <p className="text-xs text-muted-foreground">{ticket.customer.name} - {ticket.category.name}</p>
                       <div className="flex items-center justify-between text-xs">
