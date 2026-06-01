@@ -1,0 +1,210 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CLIENTE
+  TECNICO
+  ADMIN
+}
+
+enum TicketStatus {
+  ABERTO
+  EM_ANALISE
+  EM_ATENDIMENTO
+  AGUARDANDO_CLIENTE
+  RESOLVIDO
+  ENCERRADO
+  CANCELADO
+}
+
+enum Priority {
+  BAIXA
+  MEDIA
+  ALTA
+  CRITICA
+}
+
+enum HistoryAction {
+  CRIACAO
+  ALTERACAO
+  MUDANCA_STATUS
+  MUDANCA_PRIORIDADE
+  TROCA_RESPONSAVEL
+  UPLOAD_ARQUIVO
+  EXCLUSAO
+  COMENTARIO
+  AVALIACAO
+}
+
+enum NotificationType {
+  EMAIL
+  INTERNA
+}
+
+model User {
+  id             String           @id @default(cuid())
+  name           String
+  email          String           @unique
+  passwordHash   String
+  role           Role             @default(CLIENTE)
+  avatarUrl      String?
+  phone          String?
+  department     String?
+  isActive       Boolean          @default(true)
+  clientProfile  Client?
+  assignedTickets Ticket[]        @relation("AssignedTickets")
+  requestedTickets Ticket[]       @relation("RequestedTickets")
+  messages       TicketMessage[]
+  histories      TicketHistory[]
+  notifications  Notification[]
+  ratings        Rating[]         @relation("RatingAuthor")
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+}
+
+model Client {
+  id        String   @id @default(cuid())
+  company   String?
+  document  String?
+  address   String?
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Category {
+  id            String        @id @default(cuid())
+  name          String        @unique
+  description   String?       @db.Text
+  isActive      Boolean       @default(true)
+  subCategories SubCategory[]
+  tickets       Ticket[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model SubCategory {
+  id          String   @id @default(cuid())
+  name        String
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  tickets     Ticket[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([name, categoryId])
+}
+
+model SLA {
+  id            String   @id @default(cuid())
+  priority      Priority @unique
+  responseHours Int
+  solutionHours Int
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Ticket {
+  id              String             @id @default(cuid())
+  number          String             @unique
+  title           String
+  description     String             @db.Text
+  priority        Priority           @default(MEDIA)
+  status          TicketStatus       @default(ABERTO)
+  tags            Json?
+  firstResponseAt DateTime?
+  resolvedAt      DateTime?
+  closedAt        DateTime?
+  slaDueAt        DateTime
+  responseDueAt   DateTime
+  customerId      String
+  customer        User               @relation("RequestedTickets", fields: [customerId], references: [id])
+  assigneeId      String?
+  assignee        User?              @relation("AssignedTickets", fields: [assigneeId], references: [id])
+  categoryId      String
+  category        Category           @relation(fields: [categoryId], references: [id])
+  subCategoryId   String?
+  subCategory     SubCategory?       @relation(fields: [subCategoryId], references: [id])
+  messages        TicketMessage[]
+  attachments     TicketAttachment[]
+  history         TicketHistory[]
+  rating          Rating?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  @@index([status, priority])
+  @@index([customerId])
+  @@index([assigneeId])
+  @@index([slaDueAt])
+}
+
+model TicketMessage {
+  id         String             @id @default(cuid())
+  ticketId   String
+  ticket     Ticket             @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  authorId   String
+  author     User               @relation(fields: [authorId], references: [id])
+  body       String             @db.Text
+  isInternal Boolean            @default(false)
+  editedAt   DateTime?
+  attachments TicketAttachment[]
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+}
+
+model TicketAttachment {
+  id        String         @id @default(cuid())
+  ticketId  String
+  ticket    Ticket         @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  messageId String?
+  message   TicketMessage? @relation(fields: [messageId], references: [id], onDelete: SetNull)
+  fileName  String
+  fileUrl   String         @db.Text
+  fileType  String?
+  fileSize  Int?
+  createdAt DateTime       @default(now())
+}
+
+model TicketHistory {
+  id        String        @id @default(cuid())
+  ticketId  String
+  ticket    Ticket        @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  actorId   String?
+  actor     User?         @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  action    HistoryAction
+  fromValue String?
+  toValue   String?
+  metadata  Json?
+  createdAt DateTime      @default(now())
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType @default(INTERNA)
+  title     String
+  body      String           @db.Text
+  readAt    DateTime?
+  ticketId  String?
+  createdAt DateTime         @default(now())
+}
+
+model Rating {
+  id        String   @id @default(cuid())
+  ticketId  String   @unique
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation("RatingAuthor", fields: [authorId], references: [id])
+  score     Int
+  comment   String?  @db.Text
+  createdAt DateTime @default(now())
+}
