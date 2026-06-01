@@ -70,10 +70,15 @@ export function RemoteAccessPanel({ ticketId, equipmentId, host, ip, sessions }:
         <CardTitle>Acesso remoto</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        <div className="rounded-2xl border border-primary/10 bg-primary/5 p-4 text-sm">
+          <p className="font-medium">Fluxo de suporte remoto</p>
+          <p className="mt-2 text-xs text-muted-foreground">Escolha a sessão do usuário, selecione o modo de conexão e envie a solicitação para o Agente Desktop.</p>
+        </div>
+
         <div className="space-y-2 text-sm text-muted-foreground">
-          <p>Host: {host}</p>
-          <p>IP: {ip}</p>
-          <p>Sessao selecionada: {sessionId}</p>
+          <p>Host: <span className="font-medium text-foreground">{host}</span></p>
+          <p>IP: <span className="font-medium text-foreground">{ip}</span></p>
+          <p>Sessão selecionada: <span className="font-medium text-foreground">{sessionId}</span></p>
         </div>
 
         {sessions.length > 0 ? (

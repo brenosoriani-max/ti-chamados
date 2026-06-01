@@ -5,6 +5,7 @@ import { AppShell } from "@/components/app-shell";
 import { PriorityBadge, StatusBadge } from "@/components/status-badge";
 import { RemoteAccessPanel } from "@/components/remote-access-panel";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { prisma } from "@/lib/prisma";
@@ -38,44 +39,53 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
 
   return (
     <AppShell>
-      <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-        <div>
-          <p className="text-sm text-muted-foreground">{ticket.number}</p>
-          <h1 className="mt-1 text-2xl font-semibold">{ticket.title}</h1>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <StatusBadge status={ticket.status} />
-            <PriorityBadge priority={ticket.priority} />
-            <span className="rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">{ticket.category.name}</span>
+      <div className="mb-6 rounded-3xl border border-primary/10 bg-primary/5 p-6 shadow-sm">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-sm text-muted-foreground">{ticket.number}</p>
+            <h1 className="mt-1 text-3xl font-semibold">{ticket.title}</h1>
+            <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{ticket.description.substring(0, 180)}{ticket.description.length > 180 ? "..." : ""}</p>
           </div>
-        </div>
-        <div className="text-sm text-muted-foreground">
-          <p>Cliente: {ticket.customer.name}</p>
-          <p>Tecnico: {ticket.assignee?.name ?? "Sem responsavel"}</p>
-          <p>SLA: {formatDateTime(ticket.slaDueAt)}</p>
+          <div className="grid gap-2 sm:grid-cols-3">
+            <div className="rounded-2xl bg-background p-4 text-sm shadow-sm">
+              <p className="text-muted-foreground">Status</p>
+              <div className="mt-2"><StatusBadge status={ticket.status} /></div>
+            </div>
+            <div className="rounded-2xl bg-background p-4 text-sm shadow-sm">
+              <p className="text-muted-foreground">SLA</p>
+              <p className="mt-2 font-semibold">{formatDateTime(ticket.slaDueAt)}</p>
+            </div>
+            <div className="rounded-2xl bg-background p-4 text-sm shadow-sm">
+              <p className="text-muted-foreground">Responsavel</p>
+              <p className="mt-2 font-semibold">{ticket.assignee?.name ?? "Sem responsavel"}</p>
+            </div>
+          </div>
         </div>
       </div>
       <section className="grid gap-5 lg:grid-cols-[1fr_360px]">
-        <Card>
-          <CardHeader><CardTitle>Conversa</CardTitle></CardHeader>
-          <CardContent className="space-y-4">
-            {visibleMessages.map((message) => (
-              <div key={message.id} className={`rounded-lg border p-4 ${message.isInternal ? "border-amber-500/30 bg-amber-500/10" : "bg-background"}`}>
-                <div className="mb-2 flex items-center justify-between gap-3 text-xs text-muted-foreground">
-                  <span>{message.author.name}{message.isInternal ? " - interno" : ""}</span>
-                  <span>{formatDateTime(message.createdAt)}</span>
+        <div className="space-y-5">
+          <Card>
+            <CardHeader><CardTitle>Conversa</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              {visibleMessages.map((message) => (
+                <div key={message.id} className={`rounded-lg border p-4 ${message.isInternal ? "border-amber-500/30 bg-amber-500/10" : "bg-background"}`}>
+                  <div className="mb-2 flex items-center justify-between gap-3 text-xs text-muted-foreground">
+                    <span>{message.author.name}{message.isInternal ? " - interno" : ""}</span>
+                    <span>{formatDateTime(message.createdAt)}</span>
+                  </div>
+                  <p className="text-sm leading-6">{message.body}</p>
                 </div>
-                <p className="text-sm leading-6">{message.body}</p>
-              </div>
-            ))}
-            <form className="space-y-3">
-              <Textarea placeholder="Responder chamado" />
-              <div className="flex items-center justify-between">
-                <Button type="button" variant="outline"><Paperclip className="h-4 w-4" /> Anexar</Button>
-                <Button type="button"><Send className="h-4 w-4" /> Enviar</Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+              ))}
+              <form className="space-y-3">
+                <Textarea placeholder="Responder chamado" />
+                <div className="flex items-center justify-between">
+                  <Button type="button" variant="outline"><Paperclip className="h-4 w-4" /> Anexar</Button>
+                  <Button type="button"><Send className="h-4 w-4" /> Enviar</Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
         <div className="space-y-5">
           <Card>
             <CardHeader>
@@ -106,6 +116,33 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
               sessions={ticket.remoteSessions}
             />
           )}
+
+          <Card>
+            <CardHeader><CardTitle>Sessões remotas</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              {ticket.remoteSessions.length > 0 ? (
+                <div className="space-y-3">
+                  {ticket.remoteSessions.map((session) => (
+                    <div key={session.id} className="rounded-2xl border border-primary/10 bg-primary/5 p-4">
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <p className="font-medium">Sessão {session.sessionId}</p>
+                          <p className="text-xs text-muted-foreground">{session.userName} • {session.connectionType}</p>
+                        </div>
+                        <Badge variant={session.isActive ? "success" : "warning"}>{session.isActive ? "Ativa" : "Concluída"}</Badge>
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                        <span>{session.mode}</span>
+                        <span>{session.startedAt ? `Início ${formatDateTime(session.startedAt)}` : "Aguardando início"}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Quando o técnico solicitar uma sessão remota, ela aparecerá aqui.</p>
+              )}
+            </CardContent>
+          </Card>
 
           <Card>
             <CardHeader><CardTitle>Timeline</CardTitle></CardHeader>
