@@ -61,22 +61,22 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
           </div>
         </div>
       </div>
-      <section className="grid gap-6 lg:grid-cols-[1fr_350px]">
+      <section className="grid gap-6 lg:grid-cols-[1fr_minmax(320px,380px)]">
         <div className="space-y-6">
-          <Card>
+          <Card className="overflow-hidden">
             <CardHeader className="pb-4">
               <CardTitle className="text-lg">Conversa</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
+              <div className="space-y-4 max-h-[520px] overflow-y-auto pr-2">
                 {visibleMessages.length > 0 ? (
                   visibleMessages.map((message) => (
-                    <div key={message.id} className={`rounded-lg border p-4 ${message.isInternal ? "border-amber-500/30 bg-amber-500/10" : "border-white/10 bg-background/50"}`}>
-                      <div className="mb-2 flex items-center justify-between gap-3 text-xs text-muted-foreground">
+                    <div key={message.id} className={`rounded-3xl border p-4 ${message.isInternal ? "border-amber-500/30 bg-amber-500/10" : "border-white/10 bg-background/50"}`}>
+                      <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between text-xs text-muted-foreground">
                         <span className="font-semibold">{message.author.name}{message.isInternal ? " - 🔒 Interno" : ""}</span>
                         <span>{formatDateTime(message.createdAt)}</span>
                       </div>
-                      <p className="text-sm leading-relaxed">{message.body}</p>
+                      <p className="text-sm leading-relaxed break-words">{message.body}</p>
                     </div>
                   ))
                 ) : (

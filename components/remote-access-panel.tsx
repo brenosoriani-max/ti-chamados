@@ -76,15 +76,15 @@ export function RemoteAccessPanel({ ticketId, equipmentId, host, ip, sessions }:
         </div>
 
         <div className="space-y-2 text-sm text-muted-foreground">
-          <p>Host: <span className="font-medium text-foreground">{host}</span></p>
+          <p>Host: <span className="font-medium text-foreground break-all">{host}</span></p>
           <p>IP: <span className="font-medium text-foreground">{ip}</span></p>
           <p>Sessão selecionada: <span className="font-medium text-foreground">{sessionId}</span></p>
         </div>
 
         {sessions.length > 0 ? (
-          <div className="grid gap-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block text-sm font-medium">Sessao</label>
+              <label className="mb-1 block text-sm font-medium">Sessão</label>
               <Select value={sessionId} onChange={(event) => setSessionId(event.target.value)}>
                 {sessions.map((item) => (
                   <option key={item.id} value={item.sessionId}>
@@ -105,11 +105,11 @@ export function RemoteAccessPanel({ ticketId, equipmentId, host, ip, sessions }:
             </div>
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">Nenhuma sessao registrada para esta maquina.</p>
+          <p className="text-sm text-muted-foreground">Nenhuma sessão registrada para esta máquina.</p>
         )}
 
-        <Button onClick={handleConnect} disabled={loading || Number(sessionId) === 0}>
-          {loading ? "Enviando..." : "Abrir conexao remota"}
+        <Button className="w-full" onClick={handleConnect} disabled={loading || Number(sessionId) === 0}>
+          {loading ? "Enviando..." : "Abrir conexão remota"}
         </Button>
 
         {status && <p className="text-sm text-muted-foreground">{status}</p>}
