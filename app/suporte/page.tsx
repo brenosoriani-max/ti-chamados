@@ -6,6 +6,7 @@ import { StatCard } from "@/components/stat-card";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { KanbanBoard } from "@/components/kanban-board";
+import { ArchivedTickets } from "@/components/archived-tickets";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { cn } from "@/lib/utils";
@@ -15,11 +16,16 @@ export default async function SuportePage() {
   if (!session) redirect("/login");
   if (session.role !== Role.TECNICO && session.role !== Role.ADMIN) redirect("/cliente");
 
-  const [tickets, pendentes, criticos, onlineMachines, activeSessions, recentRemoteSessions, techList] = await Promise.all([
+  const [tickets, archivedTickets, pendentes, criticos, onlineMachines, activeSessions, recentRemoteSessions, techList] = await Promise.all([
     prisma.ticket.findMany({ 
       where: { isArchived: false },
       include: { customer: true, assignee: true, category: true, equipment: true }, 
       orderBy: [{ priority: "desc" }, { updatedAt: "desc" }] 
+    }),
+    prisma.ticket.findMany({
+      where: { isArchived: true },
+      include: { customer: true, assignee: true, category: true, equipment: true },
+      orderBy: [{ updatedAt: "desc" }]
     }),
     prisma.ticket.count({ where: { isArchived: false, status: { in: ["ABERTO", "EM_ANALISE", "EM_ATENDIMENTO", "AGUARDANDO_CLIENTE"] } } }),
     prisma.ticket.count({ where: { isArchived: false, priority: "CRITICA", status: { notIn: ["RESOLVIDO", "CANCELADO"] } } }),
@@ -64,6 +70,10 @@ export default async function SuportePage() {
           </div>
           
           <KanbanBoard initialTickets={tickets} techList={techList} />
+        </div>
+
+        <div className="grid gap-8 lg:grid-cols-1 mt-12 border-t border-border/20 pt-10">
+          <ArchivedTickets initialArchivedTickets={archivedTickets} />
         </div>
 
         <div className="grid gap-8 lg:grid-cols-1 mt-12 border-t border-border/20 pt-10">

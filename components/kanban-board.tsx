@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useOptimistic, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { 
   DndContext, 
   DragOverlay, 
@@ -43,6 +43,12 @@ export function KanbanBoard({ initialTickets, techList }: KanbanBoardProps) {
   const [tickets, setTickets] = useState(initialTickets);
   const [activeTicket, setActiveTicket] = useState<any>(null);
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    setTickets(initialTickets);
+  }, [initialTickets]);
+
+  const visibleTickets = tickets.filter((ticket) => !ticket.isArchived);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -114,6 +120,17 @@ export function KanbanBoard({ initialTickets, techList }: KanbanBoardProps) {
     }
   }
 
+  function handleArchive(ticketId: string) {
+    startTransition(async () => {
+      try {
+        await archiveTicketAction(ticketId, true);
+        setTickets((prev) => prev.filter((ticket) => ticket.id !== ticketId));
+      } catch (error) {
+        console.error("Erro ao arquivar chamado:", error);
+      }
+    });
+  }
+
   return (
     <DndContext
       sensors={sensors}
@@ -128,8 +145,9 @@ export function KanbanBoard({ initialTickets, techList }: KanbanBoardProps) {
             key={col} 
             id={col} 
             title={formatTicketStatus(col)} 
-            tickets={tickets.filter((t) => t.status === col)}
+            tickets={visibleTickets.filter((t) => t.status === col)}
             techList={techList}
+            onArchive={handleArchive}
           />
         ))}
       </div>
@@ -153,7 +171,7 @@ export function KanbanBoard({ initialTickets, techList }: KanbanBoardProps) {
   );
 }
 
-function KanbanColumn({ id, title, tickets, techList }: any) {
+function KanbanColumn({ id, title, tickets, techList, onArchive }: any) {
   const { setNodeRef } = useSortable({
     id: id,
     data: {
@@ -175,7 +193,7 @@ function KanbanColumn({ id, title, tickets, techList }: any) {
       <div className="flex-1 flex flex-col gap-3 min-h-[100px]">
         <SortableContext items={ticketIds} strategy={verticalListSortingStrategy}>
           {tickets.map((ticket: any) => (
-            <SortableTicket key={ticket.id} ticket={ticket} techList={techList} />
+            <SortableTicket key={ticket.id} ticket={ticket} techList={techList} onArchive={onArchive} />
           ))}
         </SortableContext>
       </div>
@@ -183,7 +201,7 @@ function KanbanColumn({ id, title, tickets, techList }: any) {
   );
 }
 
-function SortableTicket({ ticket, techList }: any) {
+function SortableTicket({ ticket, techList, onArchive }: any) {
   const {
     attributes,
     listeners,
@@ -216,12 +234,12 @@ function SortableTicket({ ticket, techList }: any) {
 
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <TicketCard ticket={ticket} techList={techList} />
+      <TicketCard ticket={ticket} techList={techList} onArchive={onArchive} />
     </div>
   );
 }
 
-function TicketCard({ ticket, techList, isOverlay }: any) {
+function TicketCard({ ticket, techList, isOverlay, onArchive }: any) {
   const hours = hoursUntil(ticket.slaDueAt);
   const isOverdue = hours < 0;
 
@@ -239,7 +257,7 @@ function TicketCard({ ticket, techList, isOverlay }: any) {
               variant="ghost" 
               size="icon" 
               className="h-7 w-7 rounded-lg hover:bg-amber-500/10 hover:text-amber-600 transition-colors"
-              onClick={() => archiveTicketAction(ticket.id, true)}
+              onClick={() => onArchive?.(ticket.id)}
             >
               <Archive className="h-3.5 w-3.5" />
             </Button>
