@@ -4,10 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/auth";
 import { equipmentCreateSchema } from "@/lib/validators";
 
-/**
- * GET /api/equipment
- * List all equipment with department and responsible user information
- */
+
 export async function GET(_request: NextRequest) {
   await requireSession();
 
@@ -24,10 +21,7 @@ export async function GET(_request: NextRequest) {
   return NextResponse.json(equipment);
 }
 
-/**
- * POST /api/equipment
- * Create a new equipment entry (requires TECNICO or ADMIN role)
- */
+
 export async function POST(request: NextRequest) {
   await requireSession([Role.TECNICO, Role.ADMIN]);
 

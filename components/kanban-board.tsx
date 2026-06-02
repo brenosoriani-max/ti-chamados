@@ -264,6 +264,8 @@ function TicketCard({ ticket, techList, isOverlay, onArchive }: any) {
             <RemoteAccessControl 
               hostname={ticket.equipment?.hostname ?? null} 
               ipAddress={ticket.equipment?.ipAddress ?? null} 
+              ticketId={ticket.id}
+              equipmentId={ticket.equipment?.id ?? null}
             />
             <PriorityBadge priority={ticket.priority} />
           </div>
