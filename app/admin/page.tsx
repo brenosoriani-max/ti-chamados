@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { BarChart3, Gauge, ShieldCheck, Star, Users, UserPlus, Settings } from "lucide-react";
 import { Role } from "@prisma/client";
 import { redirect } from "next/navigation";
@@ -126,59 +127,33 @@ export default async function AdminPage() {
             </Card>
           </div>
 
-          <aside>
+          <aside className="space-y-6">
             <Card className="glass-card border-none shadow-2xl overflow-hidden">
               <div className="h-2 w-full premium-gradient" />
-              <CardHeader>
+              <CardHeader className="p-8">
                 <CardTitle className="text-xl font-black flex items-center gap-2">
                   <UserPlus className="h-6 w-6 text-primary" />
-                  Novo Usuário
+                  Gestão de Equipe
                 </CardTitle>
-                <p className="text-xs text-muted-foreground font-medium">Cadastre novos clientes ou técnicos no sistema.</p>
+                <p className="text-sm text-muted-foreground font-medium">Adicione ou gerencie os colaboradores e técnicos do sistema.</p>
               </CardHeader>
-              <CardContent>
-                <form action={createUserAction} className="space-y-4">
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Nome Completo</label>
-                    <Input name="name" placeholder="Ex: João Silva" required />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">E-mail Corporativo</label>
-                    <Input name="email" type="email" placeholder="joao@empresa.com" required />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Função</label>
-                      <Select name="role" defaultValue="CLIENTE" required>
-                        <option value="CLIENTE">Cliente</option>
-                        <option value="TECNICO">Técnico</option>
-                        <option value="ADMIN">Administrador</option>
-                      </Select>
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Senha Inicial</label>
-                      <Input name="password" type="password" placeholder="ti123456" />
-                    </div>
-                  </div>
-                  <Button className="w-full h-12 rounded-xl premium-gradient text-sm font-bold shadow-xl shadow-teal-500/10 hover:scale-[1.02] active:scale-95 transition-transform mt-2">
-                    CRIAR USUÁRIO
-                  </Button>
-                </form>
+              <CardContent className="p-8 pt-0">
+                <Button asChild className="w-full h-14 rounded-2xl premium-gradient text-sm font-black shadow-xl shadow-teal-500/20 hover:scale-[1.02] active:scale-95 transition-transform">
+                  <Link href="/admin/usuarios">GERENCIAR USUÁRIOS</Link>
+                </Button>
               </CardContent>
             </Card>
 
-            <Card className="glass-card mt-6 border border-primary/10 bg-primary/5">
-              <CardContent className="p-6">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-2xl bg-primary/20 flex items-center justify-center text-primary">
-                    <ShieldCheck className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-sm tracking-tight leading-none text-primary">Acesso Remoto Liberado</h4>
-                    <p className="text-[10px] font-medium text-primary/60 mt-1">Sua conta ADMIN possui permissão total.</p>
-                  </div>
+            <Card className="glass-card border border-primary/10 bg-primary/5 p-8 rounded-3xl">
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 rounded-2xl bg-primary/20 flex items-center justify-center text-primary">
+                  <ShieldCheck className="h-7 w-7" />
                 </div>
-              </CardContent>
+                <div>
+                  <h4 className="font-black text-sm tracking-tight leading-none text-primary">SISTEMA SEGURO</h4>
+                  <p className="text-[10px] font-bold text-primary/60 uppercase mt-1 tracking-widest">Acesso Administrador Ativo</p>
+                </div>
+              </div>
             </Card>
           </aside>
         </div>

@@ -147,10 +147,12 @@ model Ticket {
   rating           Rating?
   remoteSessions   RemoteSession[]
   remoteAccessLogs RemoteAccessLog[]
+  isArchived       Boolean            @default(false)
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
 
   @@index([status, priority])
+  @@index([isArchived])
   @@index([customerId])
   @@index([assigneeId])
   @@index([slaDueAt])

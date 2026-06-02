@@ -3,10 +3,56 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { Role } from "@prisma/client";
-import { getSession } from "@/lib/auth";
+import { headers } from "next/headers";
+import bcrypt from "bcryptjs";
+import { getSession, clearAuthCookie, setAuthCookie, createSessionToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ticketCreateSchema } from "@/lib/validators";
 import { getDueDates, nextTicketNumber } from "@/lib/tickets";
+
+export async function registerAction(formData: FormData) {
+  const name = String(formData.get("name"));
+  const email = String(formData.get("email"));
+  const password = String(formData.get("password"));
+  
+  const headersList = await headers();
+  const ip = headersList.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1";
+
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  const user = await prisma.user.create({
+    data: {
+      name,
+      email,
+      passwordHash: hashedPassword,
+      role: Role.CLIENTE,
+      isActive: true,
+    }
+  });
+
+  // Automatically try to find and link equipment by IP
+  const equipment = await prisma.equipment.findFirst({
+    where: { ipAddress: ip }
+  });
+
+  if (equipment) {
+    await prisma.equipment.update({
+      where: { id: equipment.id },
+      data: { responsibleUserId: user.id }
+    });
+  }
+
+  const token = await createSessionToken({ id: user.id, email: user.email, role: user.role, name: user.name });
+  await setAuthCookie(token);
+  
+  redirect("/cliente");
+}
+
+
+export async function logoutAction() {
+  await clearAuthCookie();
+  redirect("/login");
+}
 
 export async function createTicketAction(formData: FormData) {
   const session = await getSession();
@@ -56,6 +102,32 @@ export async function createUserAction(formData: FormData) {
   revalidatePath("/admin");
 }
 
+export async function updateTicketStatusAction(ticketId: string, newStatus: string) {
+  const session = await getSession();
+  if (!session || (session.role !== Role.TECNICO && session.role !== Role.ADMIN)) {
+    throw new Error("Sem permissao");
+  }
+
+  const oldTicket = await prisma.ticket.findUnique({ where: { id: ticketId }, select: { status: true } });
+  
+  await prisma.ticket.update({
+    where: { id: ticketId },
+    data: { 
+      status: newStatus as any,
+      history: { 
+        create: { 
+          actorId: session.id, 
+          action: "MUDANCA_STATUS", 
+          fromValue: oldTicket?.status,
+          toValue: newStatus 
+        } 
+      }
+    }
+  });
+
+  revalidatePath("/suporte");
+}
+
 export async function assignTicketAction(ticketId: string, assigneeId: string) {
   const session = await getSession();
   if (!session || session.role !== Role.ADMIN) throw new Error("Sem permissao");
@@ -66,6 +138,29 @@ export async function assignTicketAction(ticketId: string, assigneeId: string) {
       assigneeId: assigneeId || null,
       status: assigneeId ? "EM_ATENDIMENTO" : "ABERTO",
       history: { create: { actorId: session.id, action: "TROCA_RESPONSAVEL", toValue: assigneeId || "Nenhum" } }
+    }
+  });
+
+  revalidatePath("/suporte");
+}
+
+export async function archiveTicketAction(ticketId: string, isArchived: boolean) {
+  const session = await getSession();
+  if (!session || (session.role !== Role.TECNICO && session.role !== Role.ADMIN)) {
+    throw new Error("Sem permissao");
+  }
+
+  await prisma.ticket.update({
+    where: { id: ticketId },
+    data: { 
+      isArchived: isArchived as any,
+      history: { 
+        create: { 
+          actorId: session.id, 
+          action: "ALTERACAO", 
+          toValue: isArchived ? "ARQUIVADO" : "RESTAURADO" 
+        } 
+      }
     }
   });
 

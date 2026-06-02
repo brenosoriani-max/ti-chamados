@@ -1,6 +1,5 @@
 "use client";
 
-import { Select } from "@/components/ui/select";
 import { assignTicketAction } from "@/app/actions";
 
 interface TicketAssignSelectProps {
@@ -11,19 +10,19 @@ interface TicketAssignSelectProps {
 
 export function TicketAssignSelect({ ticketId, assigneeId, techList }: TicketAssignSelectProps) {
   return (
-    <Select 
+    <select 
       name="assigneeId"
       defaultValue={assigneeId ?? ""} 
-      className="h-10 text-xs font-bold bg-white/5 border-white/10 text-muted-foreground hover:text-foreground hover:bg-white/10 transition-all rounded-xl"
+      className="w-full bg-transparent text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 border-none focus:ring-0 cursor-pointer hover:text-primary transition-colors outline-none"
       onChange={async (e) => {
         const val = e.target.value;
         await assignTicketAction(ticketId, val);
       }}
     >
-      <option value="">Atribuir técnico...</option>
+      <option value="" className="bg-card">Atribuir...</option>
       {techList.map((tech) => (
-        <option key={tech.id} value={tech.id}>{tech.name}</option>
+        <option key={tech.id} value={tech.id} className="bg-card text-foreground">{tech.name}</option>
       ))}
-    </Select>
+    </select>
   );
 }
