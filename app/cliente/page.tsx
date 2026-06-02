@@ -140,11 +140,11 @@ export default async function ClientePage() {
                 <LifeBuoy className="h-6 w-6" />
               </div>
               <div className="space-y-2">
-                <h4 className="text-xl font-black">Suporte VIP</h4>
-                <p className="text-white/70 text-sm font-medium">Equipe técnica dedicada para resolver seus problemas internos.</p>
+                <h4 className="text-xl font-black">Ver Meus Chamados</h4>
+                <p className="text-white/70 text-sm font-medium">Confira o status e acompanhe a resolução dos seus chamados.</p>
               </div>
-              <Button className="w-full py-4 rounded-2xl bg-white text-primary text-xs font-black shadow-xl hover:scale-105 transition-transform">
-                CHAT COM TI
+              <Button className="w-full py-4 rounded-2xl bg-white text-primary text-xs font-black shadow-xl">
+                Ver Meus Chamados
               </Button>
             </Card>
           </aside>
