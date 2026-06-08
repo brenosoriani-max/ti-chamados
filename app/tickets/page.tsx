@@ -38,7 +38,7 @@ export default async function TicketsPage({
   const [tickets, archivedCount] = await Promise.all([
     prisma.ticket.findMany({
       where,
-      include: { category: true, assignee: true, customer: true },
+      include: { category: true, assignee: true, customer: true, equipment: true },
       orderBy: { updatedAt: "desc" },
     }),
     prisma.ticket.count({ where: { ...where, isArchived: !isArchived } })

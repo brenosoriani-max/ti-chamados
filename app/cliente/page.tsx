@@ -18,9 +18,16 @@ export default async function ClientePage() {
   const session = await getSession();
   if (!session) redirect("/login");
   if (session.role !== Role.CLIENTE && session.role !== Role.ADMIN) redirect("/suporte");
-  const where = session.role === Role.CLIENTE ? { customerId: session.id } : {};
+  const where: any = session.role === Role.CLIENTE ? { customerId: session.id } : {};
+  where.isArchived = false;
+
   const [tickets, categories] = await Promise.all([
-    prisma.ticket.findMany({ where, include: { category: true, assignee: true }, orderBy: { updatedAt: "desc" }, take: 5 }),
+    prisma.ticket.findMany({ 
+      where, 
+      include: { category: true, assignee: true }, 
+      orderBy: { updatedAt: "desc" }, 
+      take: 5 
+    }),
     prisma.category.findMany({ where: { isActive: true }, orderBy: { name: "asc" } })
   ]);
 

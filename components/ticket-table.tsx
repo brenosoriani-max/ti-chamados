@@ -17,9 +17,11 @@ type TicketRow = {
   slaDueAt: Date;
   category?: { name: string } | null;
   assignee?: { name: string } | null;
+  customer: { name: string };
+  equipment?: { machineName: string } | null;
 };
 
-export function TicketTable({ tickets, userRole, userId }: { tickets: TicketRow[], userRole?: string, userId?: string }) {
+export function TicketTable({ tickets, userRole, userId }: { tickets: any[], userRole?: string, userId?: string }) {
   const isStaff = userRole === "TECNICO" || userRole === "ADMIN";
   
   // Header should always show Actions if user is logged in, 
@@ -57,7 +59,17 @@ export function TicketTable({ tickets, userRole, userId }: { tickets: TicketRow[
                   </TD>
                   <TD className="py-4">
                     <p className="font-bold text-sm tracking-tight">{ticket.title}</p>
-                    <p className="text-[10px] font-medium text-muted-foreground/60">{ticket.category?.name ?? "Geral"}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-[10px] font-medium text-muted-foreground/60">{ticket.category?.name ?? "Geral"}</span>
+                      <span className="text-[10px] text-muted-foreground/30">•</span>
+                      <span className="text-[10px] font-medium text-primary/60">{ticket.customer.name}</span>
+                      {ticket.equipment && (
+                        <>
+                          <span className="text-[10px] text-muted-foreground/30">•</span>
+                          <span className="text-[10px] font-medium text-emerald-600/60 uppercase">{ticket.equipment.machineName}</span>
+                        </>
+                      )}
+                    </div>
                   </TD>
                   <TD className="py-4 text-center"><StatusBadge status={ticket.status} /></TD>
                   <TD className="py-4 text-center"><PriorityBadge priority={ticket.priority} /></TD>
