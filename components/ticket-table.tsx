@@ -3,6 +3,7 @@ import { PriorityBadge, StatusBadge } from "@/components/status-badge";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
 import { formatDateTime, hoursUntil, cn } from "@/lib/utils";
 import { TicketArchiveButton } from "@/components/ticket-archive-button";
+import { RemoteAccessControl } from "@/components/remote-access-control";
 
 type TicketRow = {
   id: string;
@@ -83,7 +84,15 @@ export function TicketTable({ tickets, userRole, userId }: { tickets: any[], use
                   </TD>
                   <TD className="py-4 text-right pr-6">
                     {(isStaff || ticket.customerId === userId) && (
-                      <TicketArchiveButton ticketId={ticket.id} isArchived={ticket.isArchived} />
+                      <div className="flex items-center justify-end gap-2">
+                        <RemoteAccessControl 
+                          hostname={ticket.equipment?.hostname ?? null} 
+                          ipAddress={ticket.equipment?.ipAddress ?? null} 
+                          ticketId={ticket.id}
+                          equipmentId={ticket.equipmentId}
+                        />
+                        <TicketArchiveButton ticketId={ticket.id} isArchived={ticket.isArchived} />
+                      </div>
                     )}
                   </TD>
                 </TR>
