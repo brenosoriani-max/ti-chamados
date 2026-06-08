@@ -146,8 +146,16 @@ export async function assignTicketAction(ticketId: string, assigneeId: string) {
 
 export async function archiveTicketAction(ticketId: string, isArchived: boolean) {
   const session = await getSession();
-  if (!session || (session.role !== Role.TECNICO && session.role !== Role.ADMIN)) {
-    throw new Error("Sem permissao");
+  if (!session) throw new Error("Não autenticado");
+
+  const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+  if (!ticket) throw new Error("Chamado não encontrado");
+
+  const isOwner = ticket.customerId === session.id;
+  const isStaff = session.role === Role.TECNICO || session.role === Role.ADMIN;
+
+  if (!isOwner && !isStaff) {
+    throw new Error("Sem permissão");
   }
 
   await prisma.ticket.update({
@@ -165,4 +173,30 @@ export async function archiveTicketAction(ticketId: string, isArchived: boolean)
   });
 
   revalidatePath("/suporte");
+  revalidatePath("/tickets");
+  revalidatePath("/cliente");
+}
+
+export async function deleteTicketAction(ticketId: string) {
+  const session = await getSession();
+  if (!session) throw new Error("Não autenticado");
+
+  const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+  if (!ticket) throw new Error("Chamado não encontrado");
+
+  const isOwner = ticket.customerId === session.id;
+  const isStaff = session.role === Role.TECNICO || session.role === Role.ADMIN;
+
+  // For deletion, maybe only allow if it's archived or if staff
+  if (!isOwner && !isStaff) {
+    throw new Error("Sem permissão");
+  }
+
+  await prisma.ticket.delete({
+    where: { id: ticketId }
+  });
+
+  revalidatePath("/suporte");
+  revalidatePath("/tickets");
+  revalidatePath("/cliente");
 }
