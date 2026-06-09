@@ -1,13 +1,14 @@
-import { ArrowLeft, Filter, Search, Ticket as TicketIcon } from "lucide-react";
+import { Suspense } from "react";
+import { ArrowLeft, Search } from "lucide-react";
 import { Role } from "@prisma/client";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
-import { TicketTable } from "@/components/ticket-table";
+import { TicketListContainer, ArchivedCountContainer } from "@/components/ticket-list-container";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
-import { prisma } from "@/lib/prisma";
+import { Skeleton } from "@/components/ui/skeleton";
 import { getSession } from "@/lib/auth";
 
 export default async function TicketsPage({
@@ -35,28 +36,6 @@ export default async function TicketsPage({
     where.status = status;
   }
 
-  const [tickets, archivedCount] = await Promise.all([
-    prisma.ticket.findMany({
-      where,
-      select: {
-        id: true,
-        number: true,
-        title: true,
-        status: true,
-        priority: true,
-        isArchived: true,
-        customerId: true,
-        slaDueAt: true,
-        updatedAt: true, // Used for sorting or identifying changes
-        category: { select: { name: true } },
-        customer: { select: { name: true } },
-        equipment: { select: { id: true, machineName: true, hostname: true, ipAddress: true } },
-      },
-      orderBy: { updatedAt: "desc" },
-    }),
-    prisma.ticket.count({ where: { ...where, isArchived: !isArchived } })
-  ]);
-
   return (
     <AppShell>
       <div className="space-y-6">
@@ -79,15 +58,9 @@ export default async function TicketsPage({
           </Button>
         </header>
 
-        {tickets.length === 0 && !isArchived && archivedCount > 0 && (
-          <div className="bg-amber-500/10 border border-amber-500/20 p-4 rounded-xl flex items-center justify-between">
-            <p className="text-sm text-amber-700 font-medium">Você não possui chamados ativos, mas tem {archivedCount} {archivedCount === 1 ? 'chamado arquivado' : 'chamados arquivados'}.</p>
-            <Button asChild variant="ghost" className="text-amber-700 font-bold hover:bg-amber-500/20">
-              <Link href="/tickets?archived=true">VER ARQUIVADOS</Link>
-            </Button>
-          </div>
-        )}
-
+        <Suspense fallback={<Skeleton className="h-20 w-full rounded-xl" />}>
+           <ArchivedCountContainer where={where} isArchived={isArchived} />
+        </Suspense>
 
         <div className="bg-card border border-border/40 p-2 rounded-xl shadow-sm">
           <form action="/tickets" method="GET" className="flex flex-col md:flex-row items-center gap-2">
@@ -128,7 +101,15 @@ export default async function TicketsPage({
           </form>
         </div>
 
-        <TicketTable tickets={tickets} userRole={session.role} userId={session.id} />
+        <Suspense fallback={
+          <div className="space-y-3">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-16 w-full rounded-xl" />
+            ))}
+          </div>
+        }>
+          <TicketListContainer where={where} userRole={session.role} userId={session.id} />
+        </Suspense>
       </div>
     </AppShell>
   );

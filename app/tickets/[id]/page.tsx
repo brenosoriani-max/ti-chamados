@@ -19,16 +19,25 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
   const { id } = await params;
   const ticket = await prisma.ticket.findFirst({
     where: { id, ...(session.role === Role.CLIENTE ? { customerId: session.id } : {}) },
-    include: {
-      customer: true,
-      assignee: true,
-      category: true,
-      subCategory: true,
-      equipment: true,
-      remoteSessions: { orderBy: { createdAt: "desc" } },
-      rating: true,
-      messages: { include: { author: true }, orderBy: { createdAt: "asc" } },
-      history: { include: { actor: true }, orderBy: { createdAt: "asc" } }
+    select: {
+      id: true, number: true, title: true, description: true, status: true, priority: true, slaDueAt: true, customerId: true,
+      customer: { select: { name: true } },
+      assignee: { select: { name: true } },
+      category: { select: { name: true } },
+      equipment: { select: { id: true, hostname: true, ipAddress: true, isOnline: true } },
+      remoteSessions: { 
+        select: { id: true, sessionId: true, userName: true, status: true, connectionType: true, mode: true, isActive: true, createdAt: true, updatedAt: true }, 
+        orderBy: { createdAt: "desc" } 
+      },
+      rating: { select: { score: true, comment: true } },
+      messages: { 
+        select: { id: true, body: true, isInternal: true, createdAt: true, author: { select: { name: true } } }, 
+        orderBy: { createdAt: "asc" } 
+      },
+      history: { 
+        select: { id: true, action: true, createdAt: true, actor: { select: { name: true } } }, 
+        orderBy: { createdAt: "asc" } 
+      }
     }
   });
 

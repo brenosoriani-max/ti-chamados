@@ -196,7 +196,7 @@ export function RemoteAccessControl({
             <div className="p-3 bg-sky-500/5 rounded-xl border border-sky-500/10">
               <p className="text-[10px] font-bold text-sky-600 uppercase mb-2">Assistência Rápida</p>
               <Button size="sm" variant="outline" className="w-full text-[10px] h-8 font-bold rounded-lg border-sky-500/20 text-sky-600 hover:bg-sky-500/10" asChild>
-                <a href="quickassist:">
+                <a href="ms-quick-assist:">
                   <Monitor className="h-3 w-3 mr-2" />
                   ABRIR QUICK ASSIST
                 </a>

@@ -1,15 +1,15 @@
-import { Clock, FolderCheck, Inbox, LifeBuoy } from "lucide-react";
+import { Suspense } from "react";
 import { Role } from "@prisma/client";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
-import { StatCard } from "@/components/stat-card";
-import { TicketTable } from "@/components/ticket-table";
+import { ClientTicketsContainer } from "@/components/client-tickets-container";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Skeleton } from "@/components/ui/skeleton";
 import { createTicketAction } from "@/app/actions";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
@@ -18,18 +18,11 @@ export default async function ClientePage() {
   const session = await getSession();
   if (!session) redirect("/login");
   if (session.role !== Role.CLIENTE && session.role !== Role.ADMIN) redirect("/suporte");
+  
   const where: any = session.role === Role.CLIENTE ? { customerId: session.id } : {};
   where.isArchived = false;
 
-  const [tickets, categories] = await Promise.all([
-    prisma.ticket.findMany({ 
-      where, 
-      include: { category: true, assignee: true }, 
-      orderBy: { updatedAt: "desc" }, 
-      take: 5 
-    }),
-    prisma.category.findMany({ where: { isActive: true }, orderBy: { name: "asc" } })
-  ]);
+  const categories = await prisma.category.findMany({ where: { isActive: true }, orderBy: { name: "asc" }, select: { id: true, name: true } });
 
   return (
     <AppShell>
@@ -91,25 +84,15 @@ export default async function ClientePage() {
 
           <aside className="space-y-6">
             <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Chamados Recentes</h3>
-            <div className="space-y-3">
-              {tickets.length > 0 ? (
-                tickets.map((ticket) => (
-                  <Link key={ticket.id} href={`/tickets/${ticket.id}`} className="block">
-                    <div className="p-4 rounded-xl bg-card border border-border/40 hover:border-primary/20 transition-all group">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-[9px] font-bold text-primary">#{ticket.number}</span>
-                        <span className="text-[9px] text-muted-foreground font-medium">{new Date(ticket.updatedAt).toLocaleDateString()}</span>
-                      </div>
-                      <p className="text-xs font-bold truncate group-hover:text-primary transition-colors">{ticket.title}</p>
-                    </div>
-                  </Link>
-                ))
-              ) : (
-                <div className="py-8 text-center border border-dashed border-border/40 rounded-xl">
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase">Nenhum chamado</p>
-                </div>
-              )}
-            </div>
+            
+            <Suspense fallback={
+              <div className="space-y-3">
+                {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-20 w-full rounded-xl" />)}
+              </div>
+            }>
+              <ClientTicketsContainer where={where} />
+            </Suspense>
+
             <Button asChild variant="outline" className="w-full h-10 rounded-xl text-[10px] font-bold uppercase tracking-widest">
               <Link href="/tickets">Ver todos os chamados</Link>
             </Button>
