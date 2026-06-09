@@ -19,12 +19,36 @@ export default async function SuportePage() {
   const [tickets, archivedTickets, pendentes, criticos, onlineMachines, activeSessions, recentRemoteSessions, techList] = await Promise.all([
     prisma.ticket.findMany({ 
       where: { isArchived: false },
-      include: { customer: true, assignee: true, category: true, equipment: true }, 
+      select: {
+        id: true,
+        number: true,
+        title: true,
+        status: true,
+        priority: true,
+        slaDueAt: true,
+        assigneeId: true,
+        isArchived: true,
+        updatedAt: true,
+        customer: { select: { name: true } },
+        equipment: { select: { id: true, hostname: true, ipAddress: true, machineName: true } },
+      }, 
       orderBy: [{ priority: "desc" }, { updatedAt: "desc" }] 
     }),
     prisma.ticket.findMany({
       where: { isArchived: true },
-      include: { customer: true, assignee: true, category: true, equipment: true },
+      select: {
+        id: true,
+        number: true,
+        title: true,
+        status: true,
+        priority: true,
+        slaDueAt: true,
+        assigneeId: true,
+        isArchived: true,
+        updatedAt: true,
+        customer: { select: { name: true } },
+        equipment: { select: { id: true, hostname: true, ipAddress: true, machineName: true } },
+      },
       orderBy: [{ updatedAt: "desc" }]
     }),
     prisma.ticket.count({ where: { isArchived: false, status: { in: ["ABERTO", "EM_ANALISE", "EM_ATENDIMENTO", "AGUARDANDO_CLIENTE"] } } }),
@@ -34,7 +58,13 @@ export default async function SuportePage() {
     prisma.remoteSession.findMany({
       orderBy: { updatedAt: "desc" },
       take: 4,
-      include: { equipment: true, requestedBy: true, ticket: true }
+      select: {
+        id: true,
+        isActive: true,
+        updatedAt: true,
+        equipment: { select: { machineName: true } },
+        ticket: { select: { number: true } },
+      }
     }),
     prisma.user.findMany({ where: { role: { in: ["TECNICO", "ADMIN"] } }, select: { id: true, name: true }, orderBy: { name: "asc" } })
   ]);

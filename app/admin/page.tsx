@@ -22,8 +22,15 @@ export default async function AdminPage() {
     prisma.user.count(),
     prisma.ticket.count({ where: { slaDueAt: { gte: new Date() } } }),
     prisma.ticket.count({ where: { slaDueAt: { lt: new Date() }, status: { notIn: ["ENCERRADO", "CANCELADO"] } } }),
-    prisma.category.findMany({ include: { _count: { select: { tickets: true } } }, orderBy: { name: "asc" } }),
-    prisma.user.findMany({ where: { role: "TECNICO" }, include: { _count: { select: { assignedTickets: true } } }, orderBy: { name: "asc" } }),
+    prisma.category.findMany({ 
+      select: { id: true, name: true, _count: { select: { tickets: true } } }, 
+      orderBy: { name: "asc" } 
+    }),
+    prisma.user.findMany({ 
+      where: { role: Role.TECNICO }, 
+      select: { id: true, name: true, _count: { select: { assignedTickets: true } } }, 
+      orderBy: { name: "asc" } 
+    }),
     prisma.rating.aggregate({ _avg: { score: true } })
   ]);
 

@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { cache } from "react";
 import { SignJWT, jwtVerify } from "jose";
 import { prisma } from "@/lib/prisma";
 import type { Role } from "@prisma/client";
@@ -41,7 +42,8 @@ export async function clearAuthCookie() {
   store.delete(cookieName);
 }
 
-export async function getSession(): Promise<SessionUser | null> {
+
+export const getSession = cache(async (): Promise<SessionUser | null> => {
   const store = await cookies();
   const token = store.get(cookieName)?.value;
   if (!token) return null;
@@ -57,7 +59,7 @@ export async function getSession(): Promise<SessionUser | null> {
   } catch {
     return null;
   }
-}
+});
 
 export async function requireSession(roles?: Role[]) {
   const session = await getSession();

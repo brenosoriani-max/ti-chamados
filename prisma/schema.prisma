@@ -157,6 +157,7 @@ model Ticket {
   @@index([assigneeId])
   @@index([slaDueAt])
   @@index([equipmentId])
+  @@index([updatedAt])
 }
 
 model TicketMessage {
