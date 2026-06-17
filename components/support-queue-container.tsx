@@ -73,13 +73,13 @@ export async function SupportQueueContainer() {
   ]);
 
   return (
-    <div className="space-y-10">
-      <div className="flex items-center gap-2 -mt-16 justify-end relative z-10">
-        <Badge variant="outline" className="h-8 rounded-lg font-bold text-[10px] bg-background/50">
-          {pendentes} PENDENTES
+    <div className="space-y-12">
+      <div className="flex items-center gap-3 justify-end">
+        <Badge variant="outline" className="h-9 px-4 rounded-xl font-bold text-[10px] bg-background/50 border-border/40 text-muted-foreground tracking-widest">
+          {pendentes} CHAMADOS PENDENTES
         </Badge>
-        <Badge variant="secondary" className="h-8 rounded-lg font-bold text-[10px] bg-red-500/10 text-red-500 border-red-500/20">
-          {criticos} CRÍTICOS
+        <Badge variant="secondary" className="h-9 px-4 rounded-xl font-bold text-[10px] bg-red-500/10 text-red-500 border-red-500/20 tracking-widest animate-pulse">
+          {criticos} CRÍTICOS AGORA
         </Badge>
       </div>
 

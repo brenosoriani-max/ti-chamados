@@ -71,6 +71,7 @@ model User {
   responsibleEquipment    Equipment[]       @relation("ResponsibleUserEquipment")
   createdAt               DateTime          @default(now())
   updatedAt               DateTime          @updatedAt
+  lastIp                  String?
   remoteAccessLogs        RemoteAccessLog[]
 }
 
@@ -148,6 +149,7 @@ model Ticket {
   remoteSessions   RemoteSession[]
   remoteAccessLogs RemoteAccessLog[]
   isArchived       Boolean            @default(false)
+  creatorIp        String?
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
 

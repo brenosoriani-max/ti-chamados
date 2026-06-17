@@ -4,15 +4,11 @@ import { prisma } from "@/lib/prisma";
 import { createSessionToken, setAuthCookie } from "@/lib/auth";
 import { loginSchema } from "@/lib/validators";
 
-/**
- * POST /api/auth/login
- * Authenticate user and create session
- * Accepts both JSON and form-urlencoded content types
- */
+
 export async function POST(request: NextRequest) {
   const contentType = request.headers.get("content-type") ?? "";
 
-  // Parse request body (JSON or form data)
+
   const body =
     contentType.includes("application/json")
       ? await request.json()
@@ -58,6 +54,15 @@ export async function POST(request: NextRequest) {
     name: user.name,
     email: user.email,
     role: user.role,
+  });
+
+  // Update user last IP
+  const forwarded = request.headers.get("x-forwarded-for");
+  const ip = forwarded ? forwarded.split(",")[0] : request.nextUrl.hostname;
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { lastIp: ip },
   });
 
   await setAuthCookie(token);

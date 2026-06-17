@@ -27,6 +27,7 @@ export async function registerAction(formData: FormData) {
       passwordHash: hashedPassword,
       role: Role.CLIENTE,
       isActive: true,
+      lastIp: ip,
     }
   });
 
@@ -72,11 +73,15 @@ export async function createTicketAction(formData: FormData) {
   });
 
   const dueDates = await getDueDates(parsed.priority);
+  const headersList = await headers();
+  const ip = headersList.get("x-forwarded-for")?.split(",")[0] || "unknown";
+
   const ticket = await prisma.ticket.create({
     data: {
       ...parsed,
       number: await nextTicketNumber(),
       customerId: session.id,
+      creatorIp: ip,
       ...dueDates,
       history: { create: { actorId: session.id, action: "CRIACAO", toValue: "ABERTO" } }
     }
