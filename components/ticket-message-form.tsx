@@ -26,7 +26,7 @@ export function TicketMessageForm({ ticketId, canSendInternal = false }: TicketM
       setError(null);
       setSuccess(false);
 
-      if (!message.trim()) {
+      if (!message.trim()) {3
         setError("Mensagem não pode estar vazia");
         setIsLoading(false);
         return;

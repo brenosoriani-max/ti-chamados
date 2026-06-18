@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
 import { Role } from "@prisma/client";
-import { AppShell } from "@/components/app-shell";
 import { TerminalManager } from "@/components/terminal-manager";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
@@ -24,8 +23,7 @@ export default async function TerminaisPage() {
   });
 
   return (
-    <AppShell>
-      <div className="mx-auto max-w-7xl space-y-8">
+    <div className="mx-auto max-w-7xl space-y-8">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">Acesso remoto</p>
           <h1 className="mt-2 text-3xl font-bold tracking-tight">Terminais</h1>
@@ -34,7 +32,6 @@ export default async function TerminaisPage() {
           </p>
         </div>
         <TerminalManager initialTerminais={JSON.parse(JSON.stringify(terminais))} />
-      </div>
-    </AppShell>
+    </div>
   );
 }

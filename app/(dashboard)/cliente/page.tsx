@@ -58,7 +58,7 @@ export default async function ClientePage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">Área Afetada</label>
-                  <Select name="categoryId" defaultValue="" required className="h-12 bg-background border-border/40 focus:border-primary/40 rounded-xl text-sm">
+                  <Select name="categoryId" defaultValue="Hardware" required className="h-12 bg-background border-border/40 focus:border-primary/40 rounded-xl text-sm">
                     <option value="" disabled>Selecione uma categoria</option>
                     {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
                   </Select>
