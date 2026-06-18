@@ -27,7 +27,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { User, Archive, MoreHorizontal, Clock, Hash } from "lucide-react";
 import { PriorityBadge } from "@/components/status-badge";
-import { RemoteAccessControl } from "@/components/remote-access-control";
 import { TicketAssignSelect } from "@/components/ticket-assign-select";
 import { formatTicketStatus, hoursUntil, cn } from "@/lib/utils";
 import { updateTicketStatusAction, archiveTicketAction } from "@/app/actions";
@@ -66,12 +65,6 @@ const TicketCard = memo(({ ticket, techList, isOverlay, onArchive }: any) => {
           </div>
           
           <div className="flex items-center gap-1 shrink-0" onPointerDown={e => e.stopPropagation()}>
-             <RemoteAccessControl 
-               hostname={ticket.equipment?.hostname ?? null} 
-               ipAddress={ticket.equipment?.ipAddress ?? null} 
-               ticketId={ticket.id}
-               equipmentId={ticket.equipment?.id || ticket.equipmentId}
-             />
              <Button 
                variant="ghost" 
                size="icon" 

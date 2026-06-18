@@ -4,8 +4,6 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { PriorityBadge, StatusBadge } from "@/components/status-badge";
-import { RemoteAccessPanel } from "@/components/remote-access-panel";
-import { RemoteAccessControl } from "@/components/remote-access-control";
 import { TicketMessageForm } from "@/components/ticket-message-form";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,10 +23,6 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
       assignee: { select: { name: true } },
       category: { select: { name: true } },
       equipment: { select: { id: true, hostname: true, ipAddress: true, isOnline: true } },
-      remoteSessions: { 
-        select: { id: true, sessionId: true, userName: true, status: true, connectionType: true, mode: true, isActive: true, createdAt: true, updatedAt: true }, 
-        orderBy: { createdAt: "desc" } 
-      },
       rating: { select: { score: true, comment: true } },
       messages: { 
         select: { id: true, body: true, isInternal: true, createdAt: true, author: { select: { name: true } } }, 
@@ -159,28 +153,10 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
                       <span className="text-xs font-bold">{ticket.equipment.hostname}</span>
                       <div className={`h-2 w-2 rounded-full ${ticket.equipment.isOnline ? 'bg-emerald-500' : 'bg-muted'} shadow-sm`} />
                     </div>
-                    <div className="pt-3 border-t border-border/30">
-                        <RemoteAccessControl 
-                          ticketId={ticket.id}
-                          equipmentId={ticket.equipment.id}
-                          hostname={ticket.equipment.hostname}
-                          ipAddress={ticket.equipment.ipAddress}
-                        />
-                    </div>
                   </div>
                 )}
               </CardContent>
             </Card>
-
-            {ticket.equipment && (
-              <RemoteAccessPanel
-                ticketId={ticket.id}
-                equipmentId={ticket.equipment.id}
-                host={ticket.equipment.hostname}
-                ip={ticket.equipment.ipAddress}
-                sessions={ticket.remoteSessions}
-              />
-            )}
 
             <Card className="border-none shadow-sm bg-card/50">
               <CardHeader className="pb-2">

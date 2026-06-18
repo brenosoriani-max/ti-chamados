@@ -1,4 +1,4 @@
-import { Priority, TicketStatus } from "@prisma/client";
+import { Priority, TerminalStatus, TicketStatus } from "@prisma/client";
 import { z } from "zod";
 
 export const loginSchema = z.object({
@@ -53,14 +53,27 @@ export const equipmentCreateSchema = z.object({
 
 export const equipmentUpdateSchema = equipmentCreateSchema.partial();
 
-export const remoteSessionCreateSchema = z.object({
-  equipmentId: z.string().min(1),
-  host: z.string().min(1),
-  ip: z.string().min(1),
-  sessionId: z.number().int().nonnegative(),
-  mode: z.enum(["shadow", "view", "control"]).default("shadow"),
-  connectionType: z.string().min(1).default("shadow"),
-  reason: z.string().max(500).optional()
+export const terminalCreateSchema = z.object({
+  nome: z.string().min(1).max(120),
+  descricao: z.string().max(1000).optional().nullable(),
+  identificador: z.string().min(3).max(160),
+  token: z.string().min(16).optional(),
+  empresaId: z.string().optional().nullable(),
+  status: z.nativeEnum(TerminalStatus).optional(),
+  ultimaConexao: z.coerce.date().optional().nullable(),
+  sistemaOperacional: z.string().max(120).optional().nullable(),
+  ip: z.string().max(80).optional().nullable(),
+  versaoAgente: z.string().max(40).optional().nullable()
+});
+
+export const terminalUpdateSchema = terminalCreateSchema.partial();
+
+export const remoteStartSchema = z.object({
+  terminalId: z.string().min(1)
+});
+
+export const remoteEndSchema = z.object({
+  sessaoId: z.string().min(1)
 });
 
 export const userCreateSchema = z.object({

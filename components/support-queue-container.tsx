@@ -4,19 +4,8 @@ import { Clock3, AlertTriangle, Monitor, Activity } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import dynamic from "next/dynamic";
-import { Skeleton } from "@/components/ui/skeleton";
-
-// Dynamically import KanbanBoard as it uses dnd-kit which is heavy
-const KanbanBoard = dynamic(() => import("@/components/kanban-board").then(m => m.KanbanBoard), {
-  ssr: false,
-  loading: () => <Skeleton className="h-[600px] w-full rounded-2xl" />
-});
-
-const ArchivedTickets = dynamic(() => import("@/components/archived-tickets").then(m => m.ArchivedTickets), {
-  ssr: false,
-  loading: () => <Skeleton className="h-[400px] w-full rounded-2xl" />
-});
+import { KanbanBoard } from "@/components/kanban-board";
+import { ArchivedTickets } from "@/components/archived-tickets";
 
 export async function SupportQueueContainer() {
   const [tickets, archivedTickets, pendentes, criticos, onlineMachines, activeSessions, recentRemoteSessions, techList] = await Promise.all([
@@ -56,17 +45,17 @@ export async function SupportQueueContainer() {
     }),
     prisma.ticket.count({ where: { isArchived: false, status: { in: ["ABERTO", "EM_ANALISE", "EM_ATENDIMENTO", "AGUARDANDO_CLIENTE"] } } }),
     prisma.ticket.count({ where: { isArchived: false, priority: "CRITICA", status: { notIn: ["RESOLVIDO", "CANCELADO"] } } }),
-    prisma.equipment.count({ where: { isOnline: true } }),
-    prisma.remoteSession.count({ where: { isActive: true } }),
-    prisma.remoteSession.findMany({
-      orderBy: { updatedAt: "desc" },
+    prisma.terminal.count({ where: { status: "ONLINE" } }),
+    prisma.sessaoRemota.count({ where: { status: { in: ["AGUARDANDO", "CONECTANDO", "ATIVA"] } } }),
+    prisma.sessaoRemota.findMany({
+      orderBy: { createdAt: "desc" },
       take: 4,
       select: {
         id: true,
-        isActive: true,
-        updatedAt: true,
-        equipment: { select: { machineName: true } },
-        ticket: { select: { number: true } },
+        status: true,
+        createdAt: true,
+        terminal: { select: { nome: true } },
+        usuario: { select: { name: true } },
       }
     }),
     prisma.user.findMany({ where: { role: { in: ["TECNICO", "ADMIN"] } }, select: { id: true, name: true }, orderBy: { name: "asc" } })
@@ -108,12 +97,12 @@ export async function SupportQueueContainer() {
           {recentRemoteSessions.map((session) => (
             <Card key={session.id} className="border border-border/20 shadow-sm bg-card/40">
               <CardContent className="p-4 flex items-center gap-4">
-                <div className={cn("h-10 w-10 rounded-lg flex items-center justify-center", session.isActive ? 'bg-emerald-500/10 text-emerald-500' : 'bg-muted text-muted-foreground')}>
+                <div className={cn("h-10 w-10 rounded-lg flex items-center justify-center", session.status !== "ENCERRADA" ? 'bg-emerald-500/10 text-emerald-500' : 'bg-muted text-muted-foreground')}>
                   <Activity className="h-5 w-5" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-bold text-xs truncate">{session.equipment?.machineName ?? "Máquina"}</p>
-                  <p className="text-[9px] font-medium text-muted-foreground uppercase">Ticket #{session.ticket?.number ?? "-"}</p>
+                  <p className="font-bold text-xs truncate">{session.terminal?.nome ?? "Terminal"}</p>
+                  <p className="text-[9px] font-medium text-muted-foreground uppercase">{session.usuario?.name ?? "Operador"}</p>
                 </div>
               </CardContent>
             </Card>

@@ -32,12 +32,12 @@ export function Sidebar({ user }: SidebarProps) {
     { href: "/cliente", label: "Novo Chamado", icon: PlusCircle, show: user?.role === Role.CLIENTE || user?.role === Role.ADMIN },
     { href: "/tickets", label: "Meus Chamados", icon: Ticket, show: true },
     { href: "/suporte", label: "Fila de Suporte", icon: Layout, show: user?.role === Role.TECNICO || user?.role === Role.ADMIN },
+    { href: "/terminais", label: "Terminais", icon: MonitorDot, show: user?.role === Role.TECNICO || user?.role === Role.ADMIN },
   ].filter(i => i.show);
 
   const adminNav = [
     { href: "/admin", label: "Dashboard Admin", icon: LayoutDashboard, show: user?.role === Role.ADMIN },
     { href: "/admin/usuarios", label: "Gestão de Equipe", icon: Users, show: user?.role === Role.ADMIN },
-    { href: "/admin/equipamentos", label: "Inventário TI", icon: MonitorDot, show: user?.role === Role.ADMIN },
   ].filter(i => i.show);
 
   return (

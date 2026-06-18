@@ -40,9 +40,6 @@ export async function GET(
           include: { actor: true },
           orderBy: { createdAt: "asc" },
         },
-        remoteSessions: {
-          orderBy: { createdAt: "desc" },
-        },
       },
     });
 
