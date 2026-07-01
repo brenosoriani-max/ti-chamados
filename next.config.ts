@@ -5,7 +5,8 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: "8mb"
     }
-  }
+  },
+  serverExternalPackages: ["typeorm"]
 };
 
 export default nextConfig;

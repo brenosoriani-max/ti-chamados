@@ -1,0 +1,43 @@
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  ManyToOne,
+} from "typeorm";
+import { User } from "./User";
+import { NotificationType } from "../types";
+
+@Entity("notifications")
+export class Notification {
+  @PrimaryGeneratedColumn("uuid")
+  id!: string;
+
+  @Column()
+  userId!: string;
+
+  @ManyToOne(() => User, (u) => u.notifications, { onDelete: "CASCADE" })
+  user!: User;
+
+  @Column({
+    type: "enum",
+    enum: NotificationType,
+    default: NotificationType.INTERNA,
+  })
+  type!: NotificationType;
+
+  @Column({ type: "varchar", length: 255 })
+  title!: string;
+
+  @Column({ type: "text" })
+  body!: string;
+
+  @Column({ type: "timestamp", nullable: true })
+  readAt?: Date;
+
+  @Column({ type: "varchar", length: 255, nullable: true })
+  ticketId?: string;
+
+  @CreateDateColumn()
+  createdAt!: Date;
+}

@@ -1,5 +1,5 @@
-import { Priority, TerminalStatus, TicketStatus } from "@prisma/client";
 import { z } from "zod";
+import { Priority, TicketStatus, TerminalStatus, Role } from "@/types";
 
 export const loginSchema = z.object({
   email: z.string().email(),
@@ -80,5 +80,5 @@ export const userCreateSchema = z.object({
   name: z.string().min(3),
   email: z.string().email(),
   password: z.string().min(6),
-  role: z.enum(["CLIENTE", "TECNICO", "ADMIN"])
+  role: z.nativeEnum(Role)
 });

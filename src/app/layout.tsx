@@ -16,6 +16,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body className={`${inter.className} selection:bg-primary/20`}>
         {children}
         <Toaster position="top-right" expand={false} richColors closeButton />
+        
       </body>
     </html>
   );

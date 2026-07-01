@@ -1,8 +1,9 @@
 import { cookies } from "next/headers";
 import { cache } from "react";
 import { SignJWT, jwtVerify } from "jose";
-import { prisma } from "@/lib/prisma";
-import type { Role } from "@prisma/client";
+import { getDataSource } from "@/lib/db";
+import { User } from "@/entities/User";
+import { Role } from "@/types";
 
 const cookieName = "ti_chamados_token";
 
@@ -33,7 +34,7 @@ export async function setAuthCookie(token: string) {
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    maxAge: 60 * 60 * 8
+    maxAge: 60 * 60 * 8,
   });
 }
 
@@ -41,7 +42,6 @@ export async function clearAuthCookie() {
   const store = await cookies();
   store.delete(cookieName);
 }
-
 
 export const getSession = cache(async (): Promise<SessionUser | null> => {
   const store = await cookies();
@@ -54,7 +54,7 @@ export const getSession = cache(async (): Promise<SessionUser | null> => {
       id: String(payload.id),
       name: String(payload.name),
       email: String(payload.email),
-      role: payload.role as Role
+      role: payload.role as Role,
     };
   } catch {
     return null;
@@ -73,8 +73,64 @@ export async function requireSession(roles?: Role[]) {
 export async function getFreshSessionUser() {
   const session = await getSession();
   if (!session) return null;
-  return prisma.user.findUnique({
+
+  const ds = await getDataSource();
+  const repo = ds.getRepository(User);
+  return repo.findOne({
     where: { id: session.id },
-    select: { id: true, name: true, email: true, role: true, avatarUrl: true, department: true }
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      avatarUrl: true,
+      department: true,
+    },
   });
 }
+
+const refreshCookieName = "ti_chamados_refresh";
+
+export async function createRefreshToken(user: SessionUser) {
+  return new SignJWT(user)
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime("7d")
+    .sign(secret());
+}
+
+export async function setRefreshCookie(token: string) {
+  const store = await cookies();
+  store.set(refreshCookieName, token, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 7,
+  });
+}
+
+export async function clearRefreshCookie() {
+  const store = await cookies();
+  store.delete(refreshCookieName);
+  store.delete(cookieName);
+}
+
+export async function getRefreshSession(): Promise<SessionUser | null> {
+  const store = await cookies();
+  const token = store.get(refreshCookieName)?.value;
+  if (!token) return null;
+
+  try {
+    const { payload } = await jwtVerify(token, secret());
+    return {
+      id: String(payload.id),
+      name: String(payload.name),
+      email: String(payload.email),
+      role: payload.role as Role,
+    };
+  } catch {
+    return null;
+  }
+}
+

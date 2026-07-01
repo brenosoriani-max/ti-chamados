@@ -3,6 +3,7 @@ import { Role } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/auth";
 import { equipmentCreateSchema } from "@/lib/validators";
+import { toast } from "sonner";
 
 
 export async function GET(_request: NextRequest) {
@@ -29,10 +30,7 @@ export async function POST(request: NextRequest) {
   const parsed = equipmentCreateSchema.safeParse(body);
 
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Invalid equipment data", details: parsed.error.flatten() },
-      { status: 400 }
-    );
+    return toast.error("Dados de equipamento inválidos");
   }
 
   const equipment = await prisma.equipment.create({

@@ -23,7 +23,12 @@ export default function LoginPage() {
                 <Input name="email" type="email" placeholder="email@empresa.com" className="h-12 bg-background/50 border-border/40 rounded-xl" required />
               </div>
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Senha</label>
+                <div className="flex items-center justify-between ml-1">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Senha</label>
+                  <Link href="/forgot-password" className="text-[10px] font-bold text-primary hover:underline">
+                    Esqueceu a senha?
+                  </Link>
+                </div>
                 <Input name="password" type="password" placeholder="••••••••" className="h-12 bg-background/50 border-border/40 rounded-xl" required />
               </div>
               <Button className="w-full h-14 rounded-2xl text-sm font-bold uppercase tracking-widest mt-4 shadow-xl shadow-primary/10 hover:scale-[1.01] active:scale-[0.99] transition-all">
