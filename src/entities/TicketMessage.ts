@@ -6,10 +6,11 @@ import {
   UpdateDateColumn,
   ManyToOne,
   OneToMany,
+  type Relation,
 } from "typeorm";
-import { Ticket } from "./Ticket";
-import { User } from "./User";
-import { TicketAttachment } from "./TicketAttachment";
+import type { Ticket } from "./Ticket";
+import type { User } from "./User";
+import type { TicketAttachment } from "./TicketAttachment";
 
 @Entity("ticket_messages")
 export class TicketMessage {
@@ -19,14 +20,14 @@ export class TicketMessage {
   @Column()
   ticketId!: string;
 
-  @ManyToOne(() => Ticket, (ticket) => ticket.messages, { onDelete: "CASCADE" })
-  ticket!: Ticket;
+  @ManyToOne("Ticket", (ticket: any) => ticket.messages, { onDelete: "CASCADE" })
+  ticket!: Relation<Ticket>;
 
   @Column()
   authorId!: string;
 
-  @ManyToOne(() => User, (user) => user.messages)
-  author!: User;
+  @ManyToOne("User", (user: any) => user.messages)
+  author!: Relation<User>;
 
   @Column({ type: "text" })
   body!: string;
@@ -37,8 +38,8 @@ export class TicketMessage {
   @Column({ type: "timestamp", nullable: true })
   editedAt?: Date;
 
-  @OneToMany(() => TicketAttachment, (attach) => attach.message)
-  attachments!: TicketAttachment[];
+  @OneToMany("TicketAttachment", (attach: any) => attach.message)
+  attachments!: Relation<TicketAttachment>[];
 
   @CreateDateColumn()
   createdAt!: Date;

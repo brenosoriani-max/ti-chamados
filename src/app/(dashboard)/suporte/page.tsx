@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { Role } from "@prisma/client";
+import { Role } from "@/types";
 import { redirect } from "next/navigation";
 import { Headset } from "lucide-react";
 import { SupportQueueContainer } from "@/components/support-queue-container";

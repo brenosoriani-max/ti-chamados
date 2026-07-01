@@ -17,7 +17,7 @@ import {
   LifeBuoy,
   Layout
 } from "lucide-react";
-import { Role } from "@prisma/client";
+import { Role } from "@/types";
 import { logoutAction } from "@/app/actions";
 import { cn } from "@/lib/utils";
 

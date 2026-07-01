@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { UserPlus, Settings, ShieldCheck } from "lucide-react";
-import { Role } from "@prisma/client";
+import { Role } from "@/types";
 import { redirect } from "next/navigation";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

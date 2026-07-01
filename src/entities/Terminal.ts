@@ -6,9 +6,10 @@ import {
   UpdateDateColumn,
   OneToMany,
   Index,
+  type Relation,
 } from "typeorm";
 import { TerminalStatus } from "../types";
-import { SessaoRemota } from "./SessaoRemota";
+import type { SessaoRemota } from "./SessaoRemota";
 
 @Entity("terminals")
 @Index(["status"])
@@ -52,8 +53,8 @@ export class Terminal {
   @Column({ type: "varchar", length: 50, nullable: true })
   versaoAgente?: string;
 
-  @OneToMany(() => SessaoRemota, (sessao) => sessao.terminal)
-  sessoesRemotas!: SessaoRemota[];
+  @OneToMany("SessaoRemota", (sessao: any) => sessao.terminal)
+  sessoesRemotas!: Relation<SessaoRemota>[];
 
   @CreateDateColumn()
   createdAt!: Date;

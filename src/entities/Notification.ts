@@ -4,8 +4,9 @@ import {
   Column,
   CreateDateColumn,
   ManyToOne,
+  type Relation,
 } from "typeorm";
-import { User } from "./User";
+import type { User } from "./User";
 import { NotificationType } from "../types";
 
 @Entity("notifications")
@@ -16,8 +17,8 @@ export class Notification {
   @Column()
   userId!: string;
 
-  @ManyToOne(() => User, (u) => u.notifications, { onDelete: "CASCADE" })
-  user!: User;
+  @ManyToOne("User", (u: any) => u.notifications, { onDelete: "CASCADE" })
+  user!: Relation<User>;
 
   @Column({
     type: "enum",

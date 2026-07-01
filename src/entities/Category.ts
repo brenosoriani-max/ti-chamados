@@ -6,10 +6,11 @@ import {
   UpdateDateColumn,
   DeleteDateColumn,
   OneToMany,
+  type Relation,
 } from "typeorm";
-import { SubCategory } from "./SubCategory";
-import { Ticket } from "./Ticket";
-import { KnowledgeArticle } from "./KnowledgeArticle";
+import type { SubCategory } from "./SubCategory";
+import type { Ticket } from "./Ticket";
+import type { KnowledgeArticle } from "./KnowledgeArticle";
 
 @Entity("categories")
 export class Category {
@@ -25,14 +26,14 @@ export class Category {
   @Column({ type: "boolean", default: true })
   isActive!: boolean;
 
-  @OneToMany(() => SubCategory, (sub) => sub.category)
-  subCategories!: SubCategory[];
+  @OneToMany("SubCategory", (sub: any) => sub.category)
+  subCategories!: Relation<SubCategory>[];
 
-  @OneToMany(() => Ticket, (ticket) => ticket.category)
-  tickets!: Ticket[];
+  @OneToMany("Ticket", (ticket: any) => ticket.category)
+  tickets!: Relation<Ticket>[];
 
-  @OneToMany(() => KnowledgeArticle, (article) => article.category)
-  articles!: KnowledgeArticle[];
+  @OneToMany("KnowledgeArticle", (article: any) => article.category)
+  articles!: Relation<KnowledgeArticle>[];
 
   @CreateDateColumn()
   createdAt!: Date;

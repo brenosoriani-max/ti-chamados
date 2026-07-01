@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { ArrowLeft, Search, Ticket } from "lucide-react";
-import { Role } from "@prisma/client";
+import { Role } from "@/types";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 

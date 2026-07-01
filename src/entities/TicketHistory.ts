@@ -4,9 +4,10 @@ import {
   Column,
   CreateDateColumn,
   ManyToOne,
+  type Relation,
 } from "typeorm";
-import { Ticket } from "./Ticket";
-import { User } from "./User";
+import type { Ticket } from "./Ticket";
+import type { User } from "./User";
 import { HistoryAction } from "../types";
 
 @Entity("ticket_histories")
@@ -17,14 +18,14 @@ export class TicketHistory {
   @Column()
   ticketId!: string;
 
-  @ManyToOne(() => Ticket, (t) => t.history, { onDelete: "CASCADE" })
-  ticket!: Ticket;
+  @ManyToOne("Ticket", (t: any) => t.history, { onDelete: "CASCADE" })
+  ticket!: Relation<Ticket>;
 
   @Column({ nullable: true })
   actorId?: string;
 
-  @ManyToOne(() => User, (u) => u.histories, { onDelete: "SET NULL", nullable: true })
-  actor?: User;
+  @ManyToOne("User", (u: any) => u.histories, { onDelete: "SET NULL", nullable: true })
+  actor?: Relation<User>;
 
   @Column({
     type: "enum",
@@ -39,7 +40,7 @@ export class TicketHistory {
   toValue?: string;
 
   @Column({ type: "text", nullable: true })
-  metadata?: string; // JSON string representation if needed
+  metadata?: string;
 
   @CreateDateColumn()
   createdAt!: Date;

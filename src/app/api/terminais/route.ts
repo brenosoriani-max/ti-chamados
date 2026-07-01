@@ -1,6 +1,6 @@
 import { randomBytes } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
-import { Role } from "@prisma/client";
+import { Role } from "@/types";
 import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/auth";
 import { terminalCreateSchema } from "@/lib/validators";

@@ -4,11 +4,12 @@ import {
   Column,
   CreateDateColumn,
   ManyToOne,
+  type Relation,
   Index,
 } from "typeorm";
 import { SessaoRemotaStatus } from "../types";
-import { Terminal } from "./Terminal";
-import { User } from "./User";
+import type { Terminal } from "./Terminal";
+import type { User } from "./User";
 
 @Entity("sessoes_remotas")
 @Index(["terminalId", "status"])
@@ -21,14 +22,14 @@ export class SessaoRemota {
   @Column()
   terminalId!: string;
 
-  @ManyToOne(() => Terminal, (t) => t.sessoesRemotas, { onDelete: "CASCADE" })
-  terminal!: Terminal;
+  @ManyToOne("Terminal", (t: any) => t.sessoesRemotas, { onDelete: "CASCADE" })
+  terminal!: Relation<Terminal>;
 
   @Column()
   usuarioId!: string;
 
-  @ManyToOne(() => User, (u) => u.sessoesRemotas, { onDelete: "CASCADE" })
-  usuario!: User;
+  @ManyToOne("User", (u: any) => u.sessoesRemotas, { onDelete: "CASCADE" })
+  usuario!: Relation<User>;
 
   @Column({
     type: "enum",
@@ -44,10 +45,10 @@ export class SessaoRemota {
   encerradaEm?: Date;
 
   @Column({ type: "longtext", nullable: true })
-  logs?: string; // Stored as JSON string
+  logs?: string;
 
   @Column({ type: "longtext", nullable: true })
-  signaling?: string; // Stored as JSON string
+  signaling?: string;
 
   @CreateDateColumn()
   createdAt!: Date;

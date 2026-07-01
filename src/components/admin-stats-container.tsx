@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { Role } from "@prisma/client";
+import { Role } from "@/types";
 import { StatCard } from "@/components/stat-card";
 import { BarChart3, Gauge, ShieldCheck, Star, Users } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

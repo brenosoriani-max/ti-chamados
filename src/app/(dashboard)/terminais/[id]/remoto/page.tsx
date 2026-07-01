@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { Role } from "@prisma/client";
+import { Role } from "@/types";
 import { AppShell } from "@/components/app-shell";
 import { RemoteSessionViewer } from "@/components/remote-session-viewer";
 import { prisma } from "@/lib/prisma";

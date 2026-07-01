@@ -5,8 +5,9 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   ManyToOne,
+  type Relation,
 } from "typeorm";
-import { Category } from "./Category";
+import type { Category } from "./Category";
 
 @Entity("knowledge_articles")
 export class KnowledgeArticle {
@@ -20,13 +21,13 @@ export class KnowledgeArticle {
   content!: string;
 
   @Column({ type: "varchar", length: 255, nullable: true })
-  tags?: string; // Comma separated tags
+  tags?: string;
 
   @Column({ nullable: true })
   categoryId?: string;
 
-  @ManyToOne(() => Category, (cat) => cat.articles, { onDelete: "SET NULL", nullable: true })
-  category?: Category;
+  @ManyToOne("Category", (cat: any) => cat.articles, { onDelete: "SET NULL", nullable: true })
+  category?: Relation<Category>;
 
   @CreateDateColumn()
   createdAt!: Date;

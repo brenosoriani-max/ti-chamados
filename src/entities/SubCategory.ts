@@ -8,9 +8,10 @@ import {
   ManyToOne,
   OneToMany,
   Index,
+  type Relation,
 } from "typeorm";
-import { Category } from "./Category";
-import { Ticket } from "./Ticket";
+import type { Category } from "./Category";
+import type { Ticket } from "./Ticket";
 
 @Entity("subcategories")
 @Index(["name", "categoryId"], { unique: true })
@@ -24,11 +25,11 @@ export class SubCategory {
   @Column()
   categoryId!: string;
 
-  @ManyToOne(() => Category, (cat) => cat.subCategories, { onDelete: "CASCADE" })
-  category!: Category;
+  @ManyToOne("Category", (cat: any) => cat.subCategories, { onDelete: "CASCADE" })
+  category!: Relation<Category>;
 
-  @OneToMany(() => Ticket, (ticket) => ticket.subCategory)
-  tickets!: Ticket[];
+  @OneToMany("Ticket", (ticket: any) => ticket.subCategory)
+  tickets!: Relation<Ticket>[];
 
   @CreateDateColumn()
   createdAt!: Date;

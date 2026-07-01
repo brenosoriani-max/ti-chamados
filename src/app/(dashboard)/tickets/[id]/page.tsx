@@ -1,5 +1,5 @@
 import { Info, MessageSquare, History, Smartphone, Star, ShieldCheck, Clock, User, ArrowLeft } from "lucide-react";
-import { Role } from "@prisma/client";
+import { Role } from "@/types";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";

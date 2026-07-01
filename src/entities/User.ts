@@ -6,13 +6,14 @@ import {
   UpdateDateColumn,
   DeleteDateColumn,
   OneToMany,
+  type Relation,
 } from "typeorm";
 import { Role } from "../types";
-import { Ticket } from "./Ticket";
-import { TicketMessage } from "./TicketMessage";
-import { TicketHistory } from "./TicketHistory";
-import { Notification } from "./Notification";
-import { SessaoRemota } from "./SessaoRemota";
+import type { Ticket } from "./Ticket";
+import type { TicketMessage } from "./TicketMessage";
+import type { TicketHistory } from "./TicketHistory";
+import type { Notification } from "./Notification";
+import type { SessaoRemota } from "./SessaoRemota";
 
 @Entity("users")
 export class User {
@@ -50,23 +51,23 @@ export class User {
   @Column({ type: "varchar", length: 45, nullable: true })
   lastIp?: string;
 
-  @OneToMany(() => Ticket, (ticket) => ticket.cliente)
-  ticketsCriados!: Ticket[];
+  @OneToMany("Ticket", (ticket: any) => ticket.cliente)
+  ticketsCriados!: Relation<Ticket>[];
 
-  @OneToMany(() => Ticket, (ticket) => ticket.responsavel)
-  ticketsAtendidos!: Ticket[];
+  @OneToMany("Ticket", (ticket: any) => ticket.responsavel)
+  ticketsAtendidos!: Relation<Ticket>[];
 
-  @OneToMany(() => TicketMessage, (message) => message.author)
-  messages!: TicketMessage[];
+  @OneToMany("TicketMessage", (message: any) => message.author)
+  messages!: Relation<TicketMessage>[];
 
-  @OneToMany(() => TicketHistory, (history) => history.actor)
-  histories!: TicketHistory[];
+  @OneToMany("TicketHistory", (history: any) => history.actor)
+  histories!: Relation<TicketHistory>[];
 
-  @OneToMany(() => Notification, (notification) => notification.user)
-  notifications!: Notification[];
+  @OneToMany("Notification", (notification: any) => notification.user)
+  notifications!: Relation<Notification>[];
 
-  @OneToMany(() => SessaoRemota, (sessao) => sessao.usuario)
-  sessoesRemotas!: SessaoRemota[];
+  @OneToMany("SessaoRemota", (sessao: any) => sessao.usuario)
+  sessoesRemotas!: Relation<SessaoRemota>[];
 
   @CreateDateColumn()
   createdAt!: Date;

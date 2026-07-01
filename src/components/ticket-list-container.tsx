@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { TicketTable } from "@/components/ticket-table";
-import { Role } from "@prisma/client";
+import { Role } from "@/types";
 
 interface TicketListContainerProps {
   where: any;

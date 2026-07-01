@@ -1,4 +1,4 @@
-import { Role } from "@prisma/client";
+import { Role } from "@/types";
 import { UserPlus, Users, Trash2 } from "lucide-react";
 import { redirect } from "next/navigation";
 

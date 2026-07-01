@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { Role } from "@prisma/client";
+import { Role } from "@/types";
 import { TerminalManager } from "@/components/terminal-manager";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";

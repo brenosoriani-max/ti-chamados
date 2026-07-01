@@ -1,5 +1,4 @@
 import { Suspense } from "react";
-import { Role } from "@prisma/client";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 
@@ -11,18 +10,23 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { createTicketAction } from "@/app/actions";
-import { prisma } from "@/lib/prisma";
+import { getDataSource } from "@/lib/db";
+import { Category } from "@/entities/Category";
 import { getSession } from "@/lib/auth";
+import { Role } from "@/types";
 
 export default async function ClientePage() {
   const session = await getSession();
   if (!session) redirect("/login");
-  if (session.role !== Role.CLIENTE && session.role !== Role.ADMIN) redirect("/suporte");
-  
-  const where: any = session.role === Role.CLIENTE ? { customerId: session.id } : {};
-  where.isArchived = false;
+  if (session.role !== Role.CLIENTE && session.role !== Role.ADMINISTRADOR) redirect("/suporte");
 
-  const categories = await prisma.category.findMany({ where: { isActive: true }, orderBy: { name: "asc" }, select: { id: true, name: true } });
+  const ds = await getDataSource();
+  const categoryRepo = ds.getRepository(Category);
+  const categories = await categoryRepo.find({
+    where: { isActive: true },
+    order: { name: "ASC" },
+    select: ["id", "name"],
+  });
 
   return (
     <div className="max-w-5xl mx-auto space-y-12">
@@ -37,39 +41,41 @@ export default async function ClientePage() {
             <form action={createTicketAction} className="space-y-7">
               <div className="space-y-2">
                 <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">O que está acontecendo?</label>
-                <Input 
-                  name="title" 
-                  placeholder="Ex: Não consigo acessar o e-mail corporativo" 
+                <Input
+                  name="title"
+                  placeholder="Ex: Não consigo acessar o e-mail corporativo"
                   className="h-12 bg-background border-border/40 focus:border-primary/40 rounded-xl text-sm"
-                  required 
+                  required
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">Descrição Detalhada</label>
-                <Textarea 
-                  name="description" 
-                  placeholder="Forneça o máximo de informações possível..." 
+                <Textarea
+                  name="description"
+                  placeholder="Forneça o máximo de informações possível..."
                   className="min-h-[180px] bg-background border-border/40 focus:border-primary/40 rounded-xl resize-none text-sm leading-relaxed"
-                  required 
+                  required
                 />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">Área Afetada</label>
-                  <Select name="categoryId" defaultValue="Hardware" required className="h-12 bg-background border-border/40 focus:border-primary/40 rounded-xl text-sm">
+                  <Select name="categoryId" required className="h-12 bg-background border-border/40 focus:border-primary/40 rounded-xl text-sm">
                     <option value="" disabled>Selecione uma categoria</option>
-                    {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.id}>{category.name}</option>
+                    ))}
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px) font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">Urgência</label>
+                  <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground ml-1">Urgência</label>
                   <Select name="priority" defaultValue="MEDIA" className="h-12 bg-background border-border/40 focus:border-primary/40 rounded-xl text-sm">
                     <option value="BAIXA">Baixa - Rotina</option>
                     <option value="MEDIA">Média - Importante</option>
                     <option value="ALTA">Alta - Urgente</option>
-                    <option value="CRITICA">Crítica - Impedimento</option>
+                    <option value="URGENTE">Urgente - Impedimento Total</option>
                   </Select>
                 </div>
               </div>
@@ -89,7 +95,7 @@ export default async function ClientePage() {
                 {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-20 w-full rounded-2xl" />)}
               </div>
             }>
-              <ClientTicketsContainer where={where} />
+              <ClientTicketsContainer clienteId={session.role === Role.CLIENTE ? session.id : undefined} />
             </Suspense>
           </div>
 
