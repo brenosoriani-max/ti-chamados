@@ -1,71 +1,69 @@
+import "reflect-metadata";
 import { NextRequest, NextResponse } from "next/server";
-import { Role } from "@/types";
-import { prisma } from "@/lib/prisma";
+import { Role, TicketStatus, HistoryAction } from "@/types";
+import { initializeDatabase, getRepository } from "@/lib/database";
 import { requireSession } from "@/lib/auth";
 import { ticketCreateSchema } from "@/lib/validators";
 import { getDueDates, nextTicketNumber } from "@/lib/tickets";
+import { Ticket } from "@/entities/Ticket";
+import { TicketHistory } from "@/entities/TicketHistory";
+import { Brackets } from "typeorm";
 
-/**
- * GET /api/tickets
- * List tickets with filtering, search, and pagination
- * Query params: q (search), status (filter), page (default 1), take (default 20, max 100)
- */
 export async function GET(request: NextRequest) {
   try {
     const session = await requireSession();
-    const { searchParams } = new URL(request.url);
+    await initializeDatabase();
 
+    const { searchParams } = new URL(request.url);
     const q = searchParams.get("q") ?? undefined;
     const status = searchParams.get("status") ?? undefined;
     const page = Math.max(Number(searchParams.get("page") ?? 1), 1);
     const take = Math.min(Number(searchParams.get("take") ?? 20), 100);
 
-    const where = {
-      ...(session.role === Role.CLIENTE ? { customerId: session.id } : {}),
-      ...(status ? { status: status as never } : {}),
-      ...(q
-        ? {
-            OR: [
-              { number: { contains: q, mode: "insensitive" as const } },
-              { title: { contains: q, mode: "insensitive" as const } },
-              { description: { contains: q, mode: "insensitive" as const } },
-            ],
-          }
-        : {}),
-    };
+    const ticketRepository = getRepository(Ticket);
+    const qb = ticketRepository
+      .createQueryBuilder("ticket")
+      .leftJoinAndSelect("ticket.cliente", "cliente")
+      .leftJoinAndSelect("ticket.responsavel", "responsavel")
+      .leftJoinAndSelect("ticket.category", "category")
+      .leftJoinAndSelect("ticket.subCategory", "subCategory");
 
-    const [items, total] = await Promise.all([
-      prisma.ticket.findMany({
-        where,
-        include: {
-          customer: true,
-          assignee: true,
-          category: true,
-          subCategory: true,
-        },
-        orderBy: { updatedAt: "desc" },
-        skip: (page - 1) * take,
-        take,
-      }),
-      prisma.ticket.count({ where }),
-    ]);
+    if (session.role === Role.CLIENTE) {
+      qb.andWhere("ticket.clienteId = :clienteId", { clienteId: session.id });
+    }
+
+    if (status) {
+      qb.andWhere("ticket.status = :status", { status });
+    }
+
+    if (q) {
+      qb.andWhere(
+        new Brackets((sub) => {
+          sub
+            .where("ticket.protocolo LIKE :q", { q: `%${q}%` })
+            .orWhere("ticket.titulo LIKE :q", { q: `%${q}%` })
+            .orWhere("ticket.descricao LIKE :q", { q: `%${q}%` });
+        })
+      );
+    }
+
+    const [items, total] = await qb
+      .orderBy("ticket.updatedAt", "DESC")
+      .skip((page - 1) * take)
+      .take(take)
+      .getManyAndCount();
 
     return NextResponse.json({ items, total, page, take });
-  } catch (error) {
-    return NextResponse.json(
-      { error: "Erro ao listar chamados" },
-      { status: 500 }
-    );
+  } catch {
+    return NextResponse.json({ error: "Erro ao listar chamados" }, { status: 500 });
   }
 }
 
-/**
- * POST /api/tickets
- * Create a new ticket
- */
 export async function POST(request: NextRequest) {
   try {
     const session = await requireSession();
+    await initializeDatabase();
+
     const body = await request.json();
     const parsed = ticketCreateSchema.safeParse(body);
 
@@ -77,31 +75,37 @@ export async function POST(request: NextRequest) {
     }
 
     const dueDates = await getDueDates(parsed.data.priority);
-    const ticket = await prisma.ticket.create({
-      data: {
-        ...parsed.data,
-        number: await nextTicketNumber(),
-        customerId: session.id,
-        ...dueDates,
-        history: {
-          create: {
-            actorId: session.id,
-            action: "CRIACAO",
-            toValue: "ABERTO",
-          },
-        },
-      },
-      include: {
-        category: true,
-        customer: true,
-      },
+    const ticketRepository = getRepository(Ticket);
+    const ticketHistoryRepository = getRepository(TicketHistory);
+
+    const ticket = ticketRepository.create({
+      protocolo: await nextTicketNumber(),
+      titulo: parsed.data.title,
+      descricao: parsed.data.description,
+      categoryId: parsed.data.categoryId,
+      subCategoryId: parsed.data.subCategoryId || undefined,
+      prioridade: parsed.data.priority,
+      status: TicketStatus.ABERTO,
+      clienteId: session.id,
+      ...dueDates,
+    });
+    await ticketRepository.save(ticket);
+
+    const history = ticketHistoryRepository.create({
+      ticketId: ticket.id,
+      actorId: session.id,
+      action: HistoryAction.CRIACAO,
+      toValue: TicketStatus.ABERTO,
+    });
+    await ticketHistoryRepository.save(history);
+
+    const saved = await ticketRepository.findOne({
+      where: { id: ticket.id },
+      relations: ["category", "cliente"],
     });
 
-    return NextResponse.json(ticket, { status: 201 });
-  } catch (error) {
-    return NextResponse.json(
-      { error: "Erro ao criar chamado" },
-      { status: 500 }
-    );
+    return NextResponse.json(saved, { status: 201 });
+  } catch {
+    return NextResponse.json({ error: "Erro ao criar chamado" }, { status: 500 });
   }
 }

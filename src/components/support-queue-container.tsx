@@ -1,4 +1,5 @@
-import { prisma } from "@/lib/prisma";
+import "reflect-metadata";
+import { initializeDatabase, getRepository } from "@/lib/database";
 import { StatCard } from "@/components/stat-card";
 import { Clock3, AlertTriangle, Monitor, Activity } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -6,60 +7,76 @@ import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { KanbanBoard } from "@/components/kanban-board";
 import { ArchivedTickets } from "@/components/archived-tickets";
+import { Ticket } from "@/entities/Ticket";
+import { Terminal } from "@/entities/Terminal";
+import { SessaoRemota } from "@/entities/SessaoRemota";
+import { User } from "@/entities/User";
+import { Role, TicketStatus, Priority, SessaoRemotaStatus, TerminalStatus } from "@/types";
+import { In, Not } from "typeorm";
+import { mapTicketListItem } from "@/lib/ticket-queries";
 
 export async function SupportQueueContainer() {
-  const [tickets, archivedTickets, pendentes, criticos, onlineMachines, activeSessions, recentRemoteSessions, techList] = await Promise.all([
-    prisma.ticket.findMany({ 
-      where: { isArchived: false },
-      select: {
-        id: true,
-        number: true,
-        title: true,
-        status: true,
-        priority: true,
-        slaDueAt: true,
-        assigneeId: true,
-        isArchived: true,
-        updatedAt: true,
-        customer: { select: { name: true } },
-        equipment: { select: { id: true, hostname: true, ipAddress: true, machineName: true } },
-      }, 
-      orderBy: [{ priority: "desc" }, { updatedAt: "desc" }] 
-    }),
-    prisma.ticket.findMany({
-      where: { isArchived: true },
-      select: {
-        id: true,
-        number: true,
-        title: true,
-        status: true,
-        priority: true,
-        slaDueAt: true,
-        assigneeId: true,
-        isArchived: true,
-        updatedAt: true,
-        customer: { select: { name: true } },
-        equipment: { select: { id: true, hostname: true, ipAddress: true, machineName: true } },
-      },
-      orderBy: [{ updatedAt: "desc" }]
-    }),
-    prisma.ticket.count({ where: { isArchived: false, status: { in: ["ABERTO", "EM_ANALISE", "EM_ATENDIMENTO", "AGUARDANDO_CLIENTE"] } } }),
-    prisma.ticket.count({ where: { isArchived: false, priority: "CRITICA", status: { notIn: ["RESOLVIDO", "CANCELADO"] } } }),
-    prisma.terminal.count({ where: { status: "ONLINE" } }),
-    prisma.sessaoRemota.count({ where: { status: { in: ["AGUARDANDO", "CONECTANDO", "ATIVA"] } } }),
-    prisma.sessaoRemota.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 4,
-      select: {
-        id: true,
-        status: true,
-        createdAt: true,
-        terminal: { select: { nome: true } },
-        usuario: { select: { name: true } },
-      }
-    }),
-    prisma.user.findMany({ where: { role: { in: ["TECNICO", "ADMIN"] } }, select: { id: true, name: true }, orderBy: { name: "asc" } })
-  ]);
+  await initializeDatabase();
+
+  const ticketRepository = getRepository(Ticket);
+  const terminalRepository = getRepository(Terminal);
+  const sessaoRepository = getRepository(SessaoRemota);
+  const userRepository = getRepository(User);
+
+  const [activeTickets, archivedTickets, pendentes, criticos, onlineMachines, activeSessions, recentRemoteSessions, techList] =
+    await Promise.all([
+      ticketRepository.find({
+        where: { isArchived: false },
+        relations: ["cliente", "equipment"],
+        order: { updatedAt: "DESC" },
+      }),
+      ticketRepository.find({
+        where: { isArchived: true },
+        relations: ["cliente", "equipment"],
+        order: { updatedAt: "DESC" },
+      }),
+      ticketRepository.count({
+        where: {
+          isArchived: false,
+          status: In([
+            TicketStatus.ABERTO,
+            TicketStatus.EM_ANALISE,
+            TicketStatus.EM_ATENDIMENTO,
+            TicketStatus.AGUARDANDO_CLIENTE,
+          ]),
+        },
+      }),
+      ticketRepository.count({
+        where: {
+          isArchived: false,
+          prioridade: Priority.CRITICA,
+          status: Not(In([TicketStatus.RESOLVIDO, TicketStatus.CANCELADO])),
+        },
+      }),
+      terminalRepository.count({ where: { status: TerminalStatus.ONLINE } }),
+      sessaoRepository.count({
+        where: {
+          status: In([
+            SessaoRemotaStatus.AGUARDANDO,
+            SessaoRemotaStatus.CONECTANDO,
+            SessaoRemotaStatus.ATIVA,
+          ]),
+        },
+      }),
+      sessaoRepository.find({
+        relations: ["terminal", "usuario"],
+        order: { createdAt: "DESC" },
+        take: 4,
+      }),
+      userRepository.find({
+        where: { role: In([Role.TECNICO, Role.ADMIN]) },
+        select: ["id", "name"],
+        order: { name: "ASC" },
+      }),
+    ]);
+
+  const tickets = activeTickets.map(mapTicketListItem);
+  const archived = archivedTickets.map(mapTicketListItem);
 
   return (
     <div className="space-y-12">
@@ -85,7 +102,7 @@ export async function SupportQueueContainer() {
       </div>
 
       <div className="mt-12 border-t border-border/20 pt-10">
-        <ArchivedTickets initialArchivedTickets={archivedTickets} />
+        <ArchivedTickets initialArchivedTickets={archived} />
       </div>
 
       <div className="mt-12 border-t border-border/20 pt-10">

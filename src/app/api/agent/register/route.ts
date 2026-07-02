@@ -1,6 +1,9 @@
+import "reflect-metadata";
 import { randomBytes } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { TerminalStatus } from "@/types";
+import { initializeDatabase, getRepository } from "@/lib/database";
+import { Terminal } from "@/entities/Terminal";
 
 function bearerToken(request: NextRequest) {
   const header = request.headers.get("authorization");
@@ -8,6 +11,8 @@ function bearerToken(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  await initializeDatabase();
+
   const body = await request.json();
   const token = bearerToken(request) ?? body.token;
 
@@ -21,7 +26,7 @@ export async function POST(request: NextRequest) {
     sistemaOperacional: body.sistemaOperacional ?? body.platform,
     ip: body.ip,
     versaoAgente: body.versaoAgente,
-    status: "ONLINE" as const,
+    status: TerminalStatus.ONLINE,
     ultimaConexao: new Date(),
   };
 
@@ -29,29 +34,32 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Identificador obrigatorio" }, { status: 400 });
   }
 
-  const terminal = token
-    ? await prisma.terminal.update({
-        where: { token },
-        data,
-      }).catch(() => null)
-    : null;
+  const terminalRepository = getRepository(Terminal);
 
-  if (terminal) {
-    return NextResponse.json({ terminal });
+  if (token) {
+    const existing = await terminalRepository.findOne({ where: { token } });
+    if (existing) {
+      Object.assign(existing, data);
+      await terminalRepository.save(existing);
+      return NextResponse.json({ terminal: existing });
+    }
   }
 
   if (process.env.ALLOW_AGENT_AUTO_REGISTER !== "1") {
     return NextResponse.json({ error: "Terminal nao autorizado" }, { status: 403 });
   }
 
-  const created = await prisma.terminal.upsert({
-    where: { identificador: data.identificador },
-    update: data,
-    create: {
+  let terminal = await terminalRepository.findOne({ where: { identificador: data.identificador } });
+
+  if (terminal) {
+    Object.assign(terminal, data);
+  } else {
+    terminal = terminalRepository.create({
       ...data,
       token: token ?? randomBytes(32).toString("hex"),
-    },
-  });
+    });
+  }
 
-  return NextResponse.json({ terminal: created }, { status: 201 });
+  await terminalRepository.save(terminal);
+  return NextResponse.json({ terminal }, { status: 201 });
 }

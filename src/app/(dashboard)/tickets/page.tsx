@@ -22,19 +22,12 @@ export default async function TicketsPage({
   const { q, status, archived } = await searchParams;
   const isArchived = archived === "true";
 
-  const where: any = { isArchived };
-  if (session.role === Role.CLIENTE) {
-    where.customerId = session.id;
-  }
-  if (q) {
-    where.OR = [
-      { title: { contains: q } },
-      { number: { contains: q } },
-    ];
-  }
-  if (status) {
-    where.status = status;
-  }
+  const filter = {
+    isArchived,
+    ...(session.role === Role.CLIENTE ? { clienteId: session.id } : {}),
+    ...(q ? { q } : {}),
+    ...(status ? { status } : {}),
+  };
 
   return (
     <div className="space-y-10">
@@ -62,7 +55,7 @@ export default async function TicketsPage({
       </header>
 
       <Suspense fallback={<Skeleton className="h-20 w-full rounded-3xl" />}>
-         <ArchivedCountContainer where={where} isArchived={isArchived} />
+         <ArchivedCountContainer filter={filter} isArchived={isArchived} />
       </Suspense>
 
       <div className="bg-card/40 border border-border/20 p-4 rounded-3xl backdrop-blur-md">
@@ -111,7 +104,7 @@ export default async function TicketsPage({
           ))}
         </div>
       }>
-        <TicketListContainer where={where} userRole={session.role} userId={session.id} />
+        <TicketListContainer filter={filter} userRole={session.role} userId={session.id} />
       </Suspense>
     </div>
   );

@@ -1,45 +1,40 @@
+import "reflect-metadata";
 import { NextRequest, NextResponse } from "next/server";
 import { Role } from "@/types";
-import { prisma } from "@/lib/prisma";
+import { initializeDatabase, getRepository } from "@/lib/database";
 import { requireSession } from "@/lib/auth";
 import { equipmentCreateSchema } from "@/lib/validators";
-import { toast } from "sonner";
-
+import { Equipment } from "@/entities/Equipment";
 
 export async function GET(_request: NextRequest) {
   await requireSession();
+  await initializeDatabase();
 
-  const equipment = await prisma.equipment.findMany({
-    include: {
-      department: true,
-      responsibleUser: true,
-    },
-    orderBy: {
-      machineName: "asc",
-    },
+  const equipmentRepository = getRepository(Equipment);
+  const equipment = await equipmentRepository.find({
+    order: { machineName: "ASC" },
   });
 
   return NextResponse.json(equipment);
 }
 
-
 export async function POST(request: NextRequest) {
   await requireSession([Role.TECNICO, Role.ADMIN]);
+  await initializeDatabase();
 
   const body = await request.json();
   const parsed = equipmentCreateSchema.safeParse(body);
 
   if (!parsed.success) {
-    return toast.error("Dados de equipamento inválidos");
+    return NextResponse.json(
+      { error: "Dados de equipamento inválidos" },
+      { status: 400 }
+    );
   }
 
-  const equipment = await prisma.equipment.create({
-    data: parsed.data,
-    include: {
-      department: true,
-      responsibleUser: true,
-    },
-  });
+  const equipmentRepository = getRepository(Equipment);
+  const equipment = equipmentRepository.create(parsed.data);
+  await equipmentRepository.save(equipment);
 
   return NextResponse.json(equipment, { status: 201 });
 }

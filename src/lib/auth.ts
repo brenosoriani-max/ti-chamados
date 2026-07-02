@@ -1,7 +1,8 @@
+import "reflect-metadata";
 import { cookies } from "next/headers";
 import { cache } from "react";
 import { SignJWT, jwtVerify } from "jose";
-import { getDataSource } from "@/lib/db";
+import { getRepository, initializeDatabase } from "@/lib/database";
 import { User } from "@/entities/User";
 import { Role } from "@/types";
 
@@ -70,23 +71,41 @@ export async function requireSession(roles?: Role[]) {
   return session;
 }
 
-export async function getFreshSessionUser() {
+export async function getFreshSessionUser(): Promise<(SessionUser & { isActive: boolean; avatarUrl: string | null; department: string | null }) | null> {
   const session = await getSession();
   if (!session) return null;
 
-  const ds = await getDataSource();
-  const repo = ds.getRepository(User);
-  return repo.findOne({
-    where: { id: session.id },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      role: true,
-      avatarUrl: true,
-      department: true,
-    },
-  });
+  try {
+    await initializeDatabase();
+    const userRepository = getRepository(User);
+    const user = await userRepository.findOne({
+      where: { id: session.id },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        avatarUrl: true,
+        department: true,
+        isActive: true,
+      },
+    });
+
+    if (!user || !user.isActive) return null;
+
+    return {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role as Role,
+      avatarUrl: user.avatarUrl || null,
+      department: user.department || null,
+      isActive: user.isActive,
+    };
+  } catch (error) {
+    console.error("Error fetching fresh session user:", error);
+    return null;
+  }
 }
 
 const refreshCookieName = "ti_chamados_refresh";

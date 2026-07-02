@@ -1,13 +1,17 @@
+import "reflect-metadata";
 import { NextRequest, NextResponse } from "next/server";
-import { Role } from "@/types";
-import { prisma } from "@/lib/prisma";
+import { Role, SessaoRemotaStatus } from "@/types";
+import { initializeDatabase, getRepository } from "@/lib/database";
 import { requireSession } from "@/lib/auth";
 import { remoteEndSchema } from "@/lib/validators";
+import { SessaoRemota } from "@/entities/SessaoRemota";
+import { appendRemoteLog } from "@/lib/remote-logs";
 
 export async function POST(request: NextRequest) {
   const usuario = await requireSession([Role.TECNICO, Role.ADMIN]);
-  const parsed = remoteEndSchema.safeParse(await request.json());
+  await initializeDatabase();
 
+  const parsed = remoteEndSchema.safeParse(await request.json());
   if (!parsed.success) {
     return NextResponse.json(
       { error: "Dados da sessao invalidos", details: parsed.error.flatten() },
@@ -15,9 +19,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const current = await prisma.sessaoRemota.findUnique({
-    where: { id: parsed.data.sessaoId },
-  });
+  const sessaoRepository = getRepository(SessaoRemota);
+  const current = await sessaoRepository.findOne({ where: { id: parsed.data.sessaoId } });
 
   if (!current) {
     return NextResponse.json({ error: "Sessao nao encontrada" }, { status: 404 });
@@ -27,24 +30,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Sem permissao" }, { status: 403 });
   }
 
-  const sessao = await prisma.sessaoRemota.update({
+  current.status = SessaoRemotaStatus.ENCERRADA;
+  current.encerradaEm = new Date();
+  current.logs = appendRemoteLog(current.logs, {
+    action: "sessao:end",
+    usuarioId: usuario.id,
+    at: new Date().toISOString(),
+  });
+  await sessaoRepository.save(current);
+
+  const sessao = await sessaoRepository.findOne({
     where: { id: current.id },
-    data: {
-      status: "ENCERRADA",
-      encerradaEm: new Date(),
-      logs: [
-        ...((current.logs as any[]) ?? []),
-        {
-          action: "sessao:end",
-          usuarioId: usuario.id,
-          at: new Date().toISOString(),
-        },
-      ],
-    },
-    include: {
-      terminal: true,
-      usuario: { select: { id: true, name: true } },
-    },
+    relations: ["terminal", "usuario"],
   });
 
   return NextResponse.json(sessao);

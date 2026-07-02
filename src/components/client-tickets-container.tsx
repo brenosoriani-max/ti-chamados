@@ -1,23 +1,26 @@
-import { getDataSource } from "@/lib/db";
+import "reflect-metadata";
+import { initializeDatabase, getRepository } from "@/lib/database";
 import { Ticket } from "@/entities/Ticket";
 import Link from "next/link";
 
 export async function ClientTicketsContainer({ clienteId }: { clienteId?: string }) {
-  const ds = await getDataSource();
-  const ticketRepo = ds.getRepository(Ticket);
+  await initializeDatabase();
+  
+  const ticketRepository = getRepository(Ticket);
 
-  const qb = ticketRepo
+  let query = ticketRepository
     .createQueryBuilder("ticket")
-    .select(["ticket.id", "ticket.protocolo", "ticket.titulo", "ticket.status", "ticket.updatedAt"])
-    .where("ticket.isArchived = :archived", { archived: false })
-    .orderBy("ticket.updatedAt", "DESC")
-    .take(5);
+    .where("ticket.isArchived = false");
 
   if (clienteId) {
-    qb.andWhere("ticket.clienteId = :clienteId", { clienteId });
+    query = query.andWhere("ticket.clienteId = :clienteId", { clienteId });
   }
 
-  const tickets = await qb.getMany();
+  const tickets = await query
+    .select(["ticket.id", "ticket.protocolo", "ticket.titulo", "ticket.status", "ticket.updatedAt"])
+    .orderBy("ticket.updatedAt", "DESC")
+    .take(5)
+    .getMany();
 
   if (tickets.length === 0) {
     return (

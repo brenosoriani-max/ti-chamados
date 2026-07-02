@@ -1,40 +1,30 @@
-import { prisma } from "@/lib/prisma";
+import "reflect-metadata";
+import { initializeDatabase } from "@/lib/database";
 import { TicketTable } from "@/components/ticket-table";
 import { Role } from "@/types";
+import { findTicketsWithRelations, countTickets, type TicketFilter } from "@/lib/ticket-queries";
 
 interface TicketListContainerProps {
-  where: any;
+  filter: TicketFilter;
   userRole: Role;
   userId: string;
 }
 
-export async function TicketListContainer({ where, userRole, userId }: TicketListContainerProps) {
-  const tickets = await prisma.ticket.findMany({
-    where,
-    select: {
-      id: true,
-      number: true,
-      title: true,
-      status: true,
-      priority: true,
-      isArchived: true,
-      customerId: true,
-      slaDueAt: true,
-      updatedAt: true,
-      category: { select: { name: true } },
-      customer: { select: { name: true } },
-      equipment: { select: { id: true, machineName: true, hostname: true, ipAddress: true } },
-    },
-    orderBy: { updatedAt: "desc" },
-  });
-
+export async function TicketListContainer({ filter, userRole, userId }: TicketListContainerProps) {
+  await initializeDatabase();
+  const tickets = await findTicketsWithRelations(filter);
   return <TicketTable tickets={tickets} userRole={userRole} userId={userId} />;
 }
 
-export async function ArchivedCountContainer({ where, isArchived }: { where: any, isArchived: boolean }) {
-  const archivedCount = await prisma.ticket.count({ 
-    where: { ...where, isArchived: !isArchived } 
-  });
+export async function ArchivedCountContainer({
+  filter,
+  isArchived,
+}: {
+  filter: TicketFilter;
+  isArchived: boolean;
+}) {
+  await initializeDatabase();
+  const archivedCount = await countTickets({ ...filter, isArchived: !isArchived });
 
   if (archivedCount === 0) return null;
 

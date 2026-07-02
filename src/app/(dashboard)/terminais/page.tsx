@@ -1,26 +1,38 @@
+import "reflect-metadata";
 import { redirect } from "next/navigation";
-import { Role } from "@/types";
+import { Role, SessaoRemotaStatus } from "@/types";
 import { TerminalManager } from "@/components/terminal-manager";
-import { prisma } from "@/lib/prisma";
+import { initializeDatabase, getRepository } from "@/lib/database";
 import { getSession } from "@/lib/auth";
+import { Terminal } from "@/entities/Terminal";
+import { SessaoRemota } from "@/entities/SessaoRemota";
 
 export default async function TerminaisPage() {
+  await initializeDatabase();
   const session = await getSession();
   if (!session) redirect("/login");
   if (session.role !== Role.TECNICO && session.role !== Role.ADMIN) redirect("/tickets");
 
-  const terminais = await prisma.terminal.findMany({
-    orderBy: [{ status: "asc" }, { nome: "asc" }],
+  const terminalRepository = getRepository(Terminal);
+  const terminais = await terminalRepository.find({
+    relations: ["sessoesRemotas", "sessoesRemotas.usuario"],
+    order: { status: "ASC", nome: "ASC" },
     take: 100,
-    include: {
-      sessoesRemotas: {
-        where: { status: { in: ["AGUARDANDO", "CONECTANDO", "ATIVA"] } },
-        orderBy: { createdAt: "desc" },
-        take: 1,
-        include: { usuario: { select: { id: true, name: true } } },
-      },
-    },
   });
+
+  const terminaisComSessoes = terminais.map((terminal) => ({
+    ...terminal,
+    sessoesRemotas: terminal.sessoesRemotas
+      .filter((sessao: SessaoRemota) =>
+        [SessaoRemotaStatus.AGUARDANDO, SessaoRemotaStatus.CONECTANDO, SessaoRemotaStatus.ATIVA].includes(sessao.status)
+      )
+      .sort((a: SessaoRemota, b: SessaoRemota) => b.createdAt.getTime() - a.createdAt.getTime())
+      .slice(0, 1)
+      .map((sessao: SessaoRemota) => ({
+        ...sessao,
+        usuario: sessao.usuario ? { id: sessao.usuario.id, name: sessao.usuario.name } : null,
+      })),
+  }));
 
   return (
     <div className="mx-auto max-w-7xl space-y-8">
@@ -31,7 +43,7 @@ export default async function TerminaisPage() {
             Gerencie agentes desktop, acompanhe presença em tempo real e inicie sessões remotas.
           </p>
         </div>
-        <TerminalManager initialTerminais={JSON.parse(JSON.stringify(terminais))} />
+        <TerminalManager initialTerminais={JSON.parse(JSON.stringify(terminaisComSessoes))} />
     </div>
   );
 }

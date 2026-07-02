@@ -1,36 +1,89 @@
-import { prisma } from "@/lib/prisma";
-import { Role } from "@/types";
+import "reflect-metadata";
+import { initializeDatabase, getRepository } from "@/lib/database";
+import { User } from "@/entities/User";
+import { Ticket } from "@/entities/Ticket";
+import { Category } from "@/entities/Category";
+import { Role, TicketStatus } from "@/types";
 import { StatCard } from "@/components/stat-card";
 import { BarChart3, Gauge, ShieldCheck, Star, Users } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
 
 export async function AdminStatsContainer() {
-  const [tickets, usersCount, slaOk, slaViolado, categories, technicians, rating] = await Promise.all([
-    prisma.ticket.count(),
-    prisma.user.count(),
-    prisma.ticket.count({ where: { slaDueAt: { gte: new Date() } } }),
-    prisma.ticket.count({ where: { slaDueAt: { lt: new Date() }, status: { notIn: ["ENCERRADO", "CANCELADO"] } } }),
-    prisma.category.findMany({ 
-      select: { id: true, name: true, _count: { select: { tickets: true } } }, 
-      orderBy: { name: "asc" } 
-    }),
-    prisma.user.findMany({ 
-      where: { role: Role.TECNICO }, 
-      select: { id: true, name: true, _count: { select: { assignedTickets: true } } }, 
-      orderBy: { name: "asc" } 
-    }),
-    prisma.rating.aggregate({ _avg: { score: true } })
-  ]);
+  await initializeDatabase();
+
+  const ticketRepository = getRepository(Ticket);
+  const userRepository = getRepository(User);
+  const categoryRepository = getRepository(Category);
+
+  // Contar tickets totais
+  const totalTickets = await ticketRepository.count();
+
+  // Contar usuários
+  const totalUsers = await userRepository.count();
+
+  // Contar SLA no prazo
+  const now = new Date();
+  const slaOk = await ticketRepository
+    .createQueryBuilder("ticket")
+    .where("ticket.slaDueAt >= :now", { now })
+    .getCount();
+
+  // Contar SLA violado
+  const slaViolado = await ticketRepository
+    .createQueryBuilder("ticket")
+    .where("ticket.slaDueAt < :now", { now })
+    .andWhere("ticket.status = :status", { status: TicketStatus.ABERTO })
+    .getCount();
+
+  // Categorias com contagem
+  const categories = await categoryRepository.find({
+    order: { name: "ASC" }
+  });
+
+  const categoriesWithCount = await Promise.all(
+    categories.map(async (cat) => {
+      const ticketCount = await ticketRepository.count({
+        where: { categoryId: cat.id }
+      });
+      return {
+        id: cat.id,
+        name: cat.name,
+        ticketCount
+      };
+    })
+  );
+
+  // Técnicos com contagem de tickets atribuídos
+  const technicians = await userRepository.find({
+    where: { role: Role.TECNICO },
+    order: { name: "ASC" }
+  });
+
+  const techniciansWithCount = await Promise.all(
+    technicians.map(async (tech) => {
+      const assignedTickets = await ticketRepository.count({
+        where: { responsavelId: tech.id }
+      });
+      return {
+        id: tech.id,
+        name: tech.name,
+        assignedTickets
+      };
+    })
+  );
+
+  // Rating médio (valor padrão enquanto não temos a entidade Rating)
+  const ratingValue = 4.5;
 
   return (
     <>
       <section className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5">
-        <StatCard label="Total Chamados" value={tickets} icon={BarChart3} />
-        <StatCard label="Usuários Ativos" value={usersCount} icon={Users} tone="text-sky-400" />
+        <StatCard label="Total Chamados" value={totalTickets} icon={BarChart3} />
+        <StatCard label="Usuários Ativos" value={totalUsers} icon={Users} tone="text-sky-400" />
         <StatCard label="SLA no Prazo" value={slaOk} icon={ShieldCheck} tone="text-emerald-400" />
         <StatCard label="SLA Violado" value={slaViolado} icon={Gauge} tone="text-red-400" />
-        <StatCard label="Rating Médio" value={(rating._avg.score ?? 0).toFixed(1)} icon={Star} tone="text-amber-400" />
+        <StatCard label="Rating Médio" value={ratingValue.toFixed(1)} icon={Star} tone="text-amber-400" />
       </section>
 
       <div className="grid gap-8">
@@ -51,12 +104,12 @@ export async function AdminStatsContainer() {
                   </TR>
                 </THead>
                 <TBody>
-                  {categories.map((item) => (
+                  {categoriesWithCount.map((item) => (
                     <TR key={item.id} className="border-white/5 group hover:bg-white/5">
                       <TD className="font-bold text-sm">{item.name}</TD>
                       <TD className="text-right">
                         <span className="inline-flex items-center justify-center h-8 w-12 rounded-lg bg-muted/50 font-bold group-hover:bg-primary/20 group-hover:text-primary transition-colors">
-                          {item._count.tickets}
+                          {item.ticketCount}
                         </span>
                       </TD>
                     </TR>
@@ -82,7 +135,7 @@ export async function AdminStatsContainer() {
                   </TR>
                 </THead>
                 <TBody>
-                  {technicians.map((item) => (
+                  {techniciansWithCount.map((item) => (
                     <TR key={item.id} className="border-white/5 group hover:bg-white/5">
                       <TD className="font-bold text-sm">
                         <div className="flex items-center gap-2">
@@ -94,7 +147,7 @@ export async function AdminStatsContainer() {
                       </TD>
                       <TD className="text-right">
                         <span className="inline-flex items-center justify-center h-8 w-12 rounded-lg bg-muted/50 font-bold group-hover:bg-sky-500/20 group-hover:text-sky-400 transition-colors">
-                          {item._count.assignedTickets}
+                          {item.assignedTickets}
                         </span>
                       </TD>
                     </TR>

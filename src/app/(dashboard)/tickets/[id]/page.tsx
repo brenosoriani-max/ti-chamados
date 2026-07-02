@@ -1,4 +1,5 @@
-import { Info, MessageSquare, History, Smartphone, Star, ShieldCheck, Clock, User, ArrowLeft } from "lucide-react";
+import "reflect-metadata";
+import { Info, MessageSquare, History, Smartphone, ShieldCheck, Clock, User, ArrowLeft } from "lucide-react";
 import { Role } from "@/types";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -7,39 +8,39 @@ import { PriorityBadge, StatusBadge } from "@/components/status-badge";
 import { TicketMessageForm } from "@/components/ticket-message-form";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { prisma } from "@/lib/prisma";
+import { initializeDatabase, getRepository } from "@/lib/database";
 import { getSession } from "@/lib/auth";
 import { formatDateTime, cn } from "@/lib/utils";
+import { Ticket } from "@/entities/Ticket";
+import { TicketMessage } from "@/entities/TicketMessage";
+import { TicketHistory } from "@/entities/TicketHistory";
 
 export default async function TicketDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  await initializeDatabase();
   const session = await getSession();
   if (!session) redirect("/login");
   const { id } = await params;
-  const ticket = await prisma.ticket.findFirst({
-    where: { id, ...(session.role === Role.CLIENTE ? { customerId: session.id } : {}) },
-    select: {
-      id: true, number: true, title: true, description: true, status: true, priority: true, slaDueAt: true, customerId: true,
-      customer: { select: { name: true } },
-      assignee: { select: { name: true } },
-      category: { select: { name: true } },
-      equipment: { select: { id: true, hostname: true, ipAddress: true, isOnline: true } },
-      rating: { select: { score: true, comment: true } },
-      messages: { 
-        select: { id: true, body: true, isInternal: true, createdAt: true, author: { select: { name: true } } }, 
-        orderBy: { createdAt: "asc" } 
-      },
-      history: { 
-        select: { id: true, action: true, createdAt: true, actor: { select: { name: true } } }, 
-        orderBy: { createdAt: "asc" } 
-      }
-    }
+  const ticketRepository = getRepository(Ticket);
+  const ticket = await ticketRepository.findOne({
+    where: {
+      id,
+      ...(session.role === Role.CLIENTE ? { clienteId: session.id } : {}),
+    },
+    relations: ["cliente", "responsavel", "category", "equipment", "messages", "messages.author", "history", "history.actor"],
   });
+
+  if (ticket) {
+    ticket.messages.sort((a: TicketMessage, b: TicketMessage) => a.createdAt.getTime() - b.createdAt.getTime());
+    ticket.history.sort((a: TicketHistory, b: TicketHistory) => a.createdAt.getTime() - b.createdAt.getTime());
+  }
 
   if (!ticket) {
     return <AppShell><div className="flex flex-col items-center justify-center py-20"><p className="text-muted-foreground">Chamado não encontrado.</p></div></AppShell>;
   }
 
-  const visibleMessages = ticket.messages.filter((message) => !message.isInternal || session.role !== Role.CLIENTE);
+  const visibleMessages = ticket.messages.filter(
+    (message: TicketMessage) => !message.isInternal || session.role !== Role.CLIENTE
+  );
 
   return (
     <AppShell>
@@ -50,10 +51,10 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
           </Link>
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded uppercase">#{ticket.number}</span>
+              <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded uppercase">#{ticket.protocolo}</span>
               <StatusBadge status={ticket.status} />
             </div>
-            <h1 className="text-2xl font-bold tracking-tight">{ticket.title}</h1>
+            <h1 className="text-2xl font-bold tracking-tight">{ticket.titulo}</h1>
           </div>
         </div>
 
@@ -67,7 +68,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-6">
-                <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">{ticket.description}</p>
+                <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">{ticket.descricao}</p>
                 <div className="mt-6 grid grid-cols-2 gap-4">
                   <div className="p-3 rounded-lg bg-muted/30 border border-border/40">
                     <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Categoria</p>
@@ -75,7 +76,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
                   </div>
                   <div className="p-3 rounded-lg bg-muted/30 border border-border/40">
                     <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Prioridade</p>
-                    <PriorityBadge priority={ticket.priority} />
+                    <PriorityBadge priority={ticket.prioridade} />
                   </div>
                 </div>
               </CardContent>
@@ -91,7 +92,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
               <CardContent className="pt-6 space-y-6">
                 <div className="space-y-6 max-h-[500px] overflow-y-auto pr-2 scrollbar-hide">
                   {visibleMessages.length > 0 ? (
-                    visibleMessages.map((message) => (
+                    visibleMessages.map((message: TicketMessage) => (
                       <div key={message.id} className={cn("space-y-2", message.isInternal && "bg-amber-500/5 p-4 rounded-xl border border-amber-500/10")}>
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
@@ -128,19 +129,19 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
                     <span className="text-muted-foreground font-medium flex items-center gap-2">
                       <User className="h-3 w-3" /> Solicitante
                     </span>
-                    <span className="font-bold">{ticket.customer.name.split(' ')[0]}</span>
+                    <span className="font-bold">{ticket.cliente.name.split(' ')[0]}</span>
                   </div>
                   <div className="flex items-center justify-between text-xs py-2 border-b border-border/30">
                     <span className="text-muted-foreground font-medium flex items-center gap-2">
                       <Clock className="h-3 w-3" /> SLA
                     </span>
-                    <span className="font-bold">{formatDateTime(ticket.slaDueAt).split(',')[0]}</span>
+                    <span className="font-bold">{ticket.slaDueAt ? formatDateTime(ticket.slaDueAt).split(',')[0] : "—"}</span>
                   </div>
                   <div className="flex items-center justify-between text-xs py-2 border-b border-border/30">
                     <span className="text-muted-foreground font-medium flex items-center gap-2">
                       <ShieldCheck className="h-3 w-3" /> Responsável
                     </span>
-                    <span className="font-bold text-primary">{ticket.assignee?.name.split(' ')[0] ?? "Pendente"}</span>
+                    <span className="font-bold text-primary">{ticket.responsavel?.name.split(' ')[0] ?? "Pendente"}</span>
                   </div>
                 </div>
 
@@ -166,7 +167,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
               </CardHeader>
               <CardContent className="p-6 pt-2">
                 <div className="space-y-4">
-                  {ticket.history.slice(-3).map((item) => (
+                  {ticket.history.slice(-3).map((item: TicketHistory) => (
                     <div key={item.id} className="text-[10px] space-y-1">
                       <div className="flex justify-between font-bold">
                         <span className="text-primary/70">{item.action.replace('_', ' ')}</span>

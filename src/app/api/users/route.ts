@@ -1,7 +1,9 @@
+import "reflect-metadata";
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { Role } from "@/types";
-import { prisma } from "@/lib/prisma";
+import { initializeDatabase, getRepository } from "@/lib/database";
+import { User } from "@/entities/User";
 import { requireSession } from "@/lib/auth";
 import { userCreateSchema } from "@/lib/validators";
 
@@ -12,18 +14,21 @@ import { userCreateSchema } from "@/lib/validators";
 export async function GET() {
   try {
     await requireSession([Role.ADMIN]);
+    await initializeDatabase();
 
-    const users = await prisma.user.findMany({
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        isActive: true,
-        createdAt: true,
-      },
-      orderBy: { name: "asc" },
-    });
+    const userRepository = getRepository(User);
+    const users = await userRepository
+      .createQueryBuilder("user")
+      .select([
+        "user.id",
+        "user.name",
+        "user.email",
+        "user.role",
+        "user.isActive",
+        "user.createdAt",
+      ])
+      .orderBy("user.name", "ASC")
+      .getMany();
 
     return NextResponse.json(users);
   } catch (error) {
@@ -41,6 +46,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     await requireSession([Role.ADMIN]);
+    await initializeDatabase();
 
     const body = await request.json();
     const parsed = userCreateSchema.safeParse(body);
@@ -53,22 +59,25 @@ export async function POST(request: NextRequest) {
     }
 
     const passwordHash = await bcrypt.hash(parsed.data.password, 10);
-    const user = await prisma.user.create({
-      data: {
-        name: parsed.data.name,
-        email: parsed.data.email,
-        role: parsed.data.role,
-        passwordHash,
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-      },
+    const userRepository = getRepository(User);
+    const user = userRepository.create({
+      name: parsed.data.name,
+      email: parsed.data.email,
+      role: parsed.data.role,
+      passwordHash,
     });
+    
+    await userRepository.save(user);
 
-    return NextResponse.json(user, { status: 201 });
+    return NextResponse.json(
+      {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+      { status: 201 }
+    );
   } catch (error) {
     return NextResponse.json(
       { error: "Erro ao criar usuário" },

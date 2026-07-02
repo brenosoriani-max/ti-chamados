@@ -1,5 +1,8 @@
+import "reflect-metadata";
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { TerminalStatus } from "@/types";
+import { initializeDatabase, getRepository } from "@/lib/database";
+import { Terminal } from "@/entities/Terminal";
 
 function bearerToken(request: NextRequest) {
   const header = request.headers.get("authorization");
@@ -7,27 +10,27 @@ function bearerToken(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const token = bearerToken(request);
+  await initializeDatabase();
 
+  const token = bearerToken(request);
   if (!token) {
     return NextResponse.json({ error: "Token do terminal obrigatorio" }, { status: 401 });
   }
 
   const body = await request.json().catch(() => ({}));
-  const terminal = await prisma.terminal.update({
-    where: { token },
-    data: {
-      status: "ONLINE",
-      ultimaConexao: new Date(),
-      ip: body.ip,
-      versaoAgente: body.versaoAgente,
-      sistemaOperacional: body.sistemaOperacional,
-    },
-  }).catch(() => null);
+  const terminalRepository = getRepository(Terminal);
+  const terminal = await terminalRepository.findOne({ where: { token } });
 
   if (!terminal) {
     return NextResponse.json({ error: "Terminal nao autorizado" }, { status: 403 });
   }
 
+  terminal.status = TerminalStatus.ONLINE;
+  terminal.ultimaConexao = new Date();
+  if (body.ip) terminal.ip = body.ip;
+  if (body.versaoAgente) terminal.versaoAgente = body.versaoAgente;
+  if (body.sistemaOperacional) terminal.sistemaOperacional = body.sistemaOperacional;
+
+  await terminalRepository.save(terminal);
   return NextResponse.json({ ok: true, terminalId: terminal.id });
 }

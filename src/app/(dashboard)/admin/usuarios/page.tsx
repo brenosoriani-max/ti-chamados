@@ -1,3 +1,4 @@
+import "reflect-metadata";
 import { Role } from "@/types";
 import { UserPlus, Users, Trash2 } from "lucide-react";
 import { redirect } from "next/navigation";
@@ -8,7 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
 import { createUserAction } from "@/app/actions";
-import { prisma } from "@/lib/prisma";
+import { initializeDatabase, getRepository } from "@/lib/database";
+import { User } from "@/entities/User";
 import { getSession } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 
@@ -16,8 +18,10 @@ export default async function UsuariosPage() {
   const session = await getSession();
   if (!session || session.role !== Role.ADMIN) redirect("/cliente");
 
-  const users = await prisma.user.findMany({
-    orderBy: { name: "asc" },
+  await initializeDatabase();
+  const userRepository = getRepository(User);
+  const users = await userRepository.find({
+    order: { name: "ASC" },
   });
 
   return (

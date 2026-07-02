@@ -1,12 +1,15 @@
+import "reflect-metadata";
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { getDataSource } from "@/lib/db";
+import { initializeDatabase, getRepository } from "@/lib/database";
 import { User } from "@/entities/User";
 import { createSessionToken, setAuthCookie } from "@/lib/auth";
 import { loginSchema } from "@/lib/validators";
 import { Role } from "@/types";
 
 export async function POST(request: NextRequest) {
+  await initializeDatabase();
+  
   const contentType = request.headers.get("content-type") ?? "";
 
   const body = contentType.includes("application/json")
@@ -19,10 +22,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Dados de login inválidos" }, { status: 400 });
   }
 
-  // Find user by email using TypeORM
-  const ds = await getDataSource();
-  const userRepo = ds.getRepository(User);
-  const user = await userRepo.findOne({
+  const userRepository = getRepository(User);
+  const user = await userRepository.findOne({
     where: { email: parsed.data.email },
   });
 
@@ -33,7 +34,6 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Verify password
   const passwordMatch = await bcrypt.compare(
     parsed.data.password,
     user.passwordHash
@@ -46,24 +46,21 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Create session token and set cookie
   const token = await createSessionToken({
     id: user.id,
     name: user.name,
     email: user.email,
-    role: user.role,
+    role: user.role as Role,
   });
 
-  // Update user last IP
   const forwarded = request.headers.get("x-forwarded-for");
   const ip = forwarded ? forwarded.split(",")[0] : request.nextUrl.hostname;
 
   user.lastIp = ip;
-  await userRepo.save(user);
+  await userRepository.save(user);
 
   await setAuthCookie(token);
 
-  // Return based on content type
   if (contentType.includes("application/json")) {
     return NextResponse.json({
       ok: true,
@@ -75,11 +72,10 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  // Redirect to dashboard based on user role
   const redirectUrl =
     user.role === Role.CLIENTE
       ? "/cliente"
-      : user.role === Role.ADMINISTRADOR
+      : user.role === Role.ADMIN
       ? "/admin"
       : "/suporte";
 

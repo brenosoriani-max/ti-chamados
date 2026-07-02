@@ -1,19 +1,20 @@
+import "reflect-metadata";
 import { NextRequest, NextResponse } from "next/server";
-import { Role } from "@/types";
-import { prisma } from "@/lib/prisma";
+import { Role, HistoryAction } from "@/types";
+import { initializeDatabase, getRepository } from "@/lib/database";
 import { requireSession } from "@/lib/auth";
 import { messageCreateSchema } from "@/lib/validators";
+import { Ticket } from "@/entities/Ticket";
+import { TicketMessage } from "@/entities/TicketMessage";
+import { TicketHistory } from "@/entities/TicketHistory";
 
-/**
- * POST /api/tickets/[id]/messages
- * Add a message/comment to a ticket
- */
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await requireSession();
+    await initializeDatabase();
     const { id } = await params;
 
     const body = await request.json();
@@ -26,60 +27,51 @@ export async function POST(
       );
     }
 
-    // Internal comments are restricted to non-customers
     if (parsed.data.isInternal && session.role === Role.CLIENTE) {
-      return NextResponse.json(
-        { error: "Comentário interno restrito" },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: "Comentário interno restrito" }, { status: 403 });
     }
 
-    // Verify ticket access
-    const ticket = await prisma.ticket.findFirst({
+    const ticketRepository = getRepository(Ticket);
+    const ticket = await ticketRepository.findOne({
       where: {
         id,
-        ...(session.role === Role.CLIENTE ? { customerId: session.id } : {}),
+        ...(session.role === Role.CLIENTE ? { clienteId: session.id } : {}),
       },
     });
 
     if (!ticket) {
-      return NextResponse.json(
-        { error: "Chamado não encontrado" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Chamado não encontrado" }, { status: 404 });
     }
 
-    // Create message and update ticket in a transaction
-    const [message] = await prisma.$transaction([
-      prisma.ticketMessage.create({
-        data: {
-          ticketId: id,
-          authorId: session.id,
-          body: parsed.data.body,
-          isInternal: parsed.data.isInternal,
-        },
-        include: { author: true },
-      }),
-      prisma.ticket.update({
-        where: { id },
-        data: {
-          updatedAt: new Date(),
-          history: {
-            create: {
-              actorId: session.id,
-              action: "COMENTARIO",
-              toValue: parsed.data.isInternal ? "interno" : "público",
-            },
-          },
-        },
-      }),
-    ]);
+    const messageRepository = getRepository(TicketMessage);
+    const historyRepository = getRepository(TicketHistory);
 
-    return NextResponse.json(message, { status: 201 });
-  } catch (error) {
-    return NextResponse.json(
-      { error: "Erro ao comentar" },
-      { status: 500 }
-    );
+    const message = messageRepository.create({
+      ticketId: id,
+      authorId: session.id,
+      body: parsed.data.body,
+      isInternal: parsed.data.isInternal,
+    });
+    await messageRepository.save(message);
+
+    ticket.updatedAt = new Date();
+    await ticketRepository.save(ticket);
+
+    const history = historyRepository.create({
+      ticketId: id,
+      actorId: session.id,
+      action: HistoryAction.COMENTARIO,
+      toValue: parsed.data.isInternal ? "interno" : "público",
+    });
+    await historyRepository.save(history);
+
+    const saved = await messageRepository.findOne({
+      where: { id: message.id },
+      relations: ["author"],
+    });
+
+    return NextResponse.json(saved, { status: 201 });
+  } catch {
+    return NextResponse.json({ error: "Erro ao comentar" }, { status: 500 });
   }
 }

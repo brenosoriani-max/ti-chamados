@@ -9,7 +9,7 @@ export const defaultSla: Record<Priority, SLARule> = {
   [Priority.BAIXA]: { responseHours: 24, solutionHours: 72 },
   [Priority.MEDIA]: { responseHours: 8, solutionHours: 24 },
   [Priority.ALTA]: { responseHours: 4, solutionHours: 8 },
-  [Priority.URGENTE]: { responseHours: 1, solutionHours: 4 }
+  [Priority.CRITICA]: { responseHours: 1, solutionHours: 4 }
 };
 
 export function calculateDueDates(priority: Priority, sla?: SLARule | null) {

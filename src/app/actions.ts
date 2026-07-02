@@ -1,20 +1,23 @@
 "use server";
 
+import "reflect-metadata";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import bcrypt from "bcryptjs";
 import { getSession, clearRefreshCookie, setAuthCookie, createSessionToken } from "@/lib/auth";
-import { getDataSource } from "@/lib/db";
+import { getRepository, initializeDatabase } from "@/lib/database";
 import { User } from "@/entities/User";
+import { Equipment } from "@/entities/Equipment";
 import { Ticket } from "@/entities/Ticket";
 import { TicketHistory } from "@/entities/TicketHistory";
-import { Equipment } from "@/entities/Equipment";
 import { Role, TicketStatus, HistoryAction } from "@/types";
 import { ticketCreateSchema } from "@/lib/validators";
 import { getDueDates, nextTicketNumber } from "@/lib/tickets";
 
 export async function registerAction(formData: FormData) {
+  await initializeDatabase();
+  
   const name = String(formData.get("name"));
   const email = String(formData.get("email"));
   const password = String(formData.get("password"));
@@ -23,13 +26,12 @@ export async function registerAction(formData: FormData) {
   const ip = headersList.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1";
 
   const salt = bcrypt.genSaltSync(10);
-  const hashedPassword = await bcrypt.hashSync(password, salt);
+  const hashedPassword = bcrypt.hashSync(password, salt);
 
-  const ds = await getDataSource();
-  const userRepo = ds.getRepository(User);
-  const equipmentRepo = ds.getRepository(Equipment);
+  const userRepository = getRepository(User);
+  const equipmentRepository = getRepository(Equipment);
 
-  const newUser = userRepo.create({
+  const user = userRepository.create({
     name,
     email,
     passwordHash: hashedPassword,
@@ -37,28 +39,25 @@ export async function registerAction(formData: FormData) {
     isActive: true,
     lastIp: ip,
   });
+  await userRepository.save(user);
 
-  const user = await userRepo.save(newUser);
-
-  // Automatically try to find and link equipment by IP
-  const equipment = await equipmentRepo.findOne({
+  const equipment = await equipmentRepository.findOne({
     where: { ipAddress: ip },
   });
 
   if (equipment) {
     equipment.responsibleUserId = user.id;
-    await equipmentRepo.save(equipment);
+    await equipmentRepository.save(equipment);
   }
 
   const token = await createSessionToken({
     id: user.id,
     email: user.email,
-    role: user.role,
+    role: user.role as Role,
     name: user.name,
   });
 
   await setAuthCookie(token);
-
   redirect("/cliente");
 }
 
@@ -68,13 +67,14 @@ export async function logoutAction() {
 }
 
 export async function createTicketAction(formData: FormData) {
+  await initializeDatabase();
+  
   const session = await getSession();
   if (!session) redirect("/login");
-  if (session.role !== Role.CLIENTE && session.role !== Role.ADMINISTRADOR) {
+  if (session.role !== Role.CLIENTE && session.role !== Role.ADMIN) {
     throw new Error("Sem permissao");
   }
 
-  // Parse tags
   const tagsText = String(formData.get("tags") ?? "");
   const parsedTags = tagsText
     .split(",")
@@ -86,7 +86,7 @@ export async function createTicketAction(formData: FormData) {
     description: formData.get("description"),
     categoryId: formData.get("categoryId"),
     subCategoryId: formData.get("subCategoryId") || undefined,
-    priority: formData.get("priority") || "MEDIA",
+    priority: (formData.get("priority") as string) || "MEDIA",
     tags: parsedTags,
   });
 
@@ -94,45 +94,42 @@ export async function createTicketAction(formData: FormData) {
   const headersList = await headers();
   const ip = headersList.get("x-forwarded-for")?.split(",")[0] || "unknown";
 
-  const ds = await getDataSource();
-  const ticketRepo = ds.getRepository(Ticket);
-  const historyRepo = ds.getRepository(TicketHistory);
+  const ticketRepository = getRepository(Ticket);
+  const ticketHistoryRepository = getRepository(TicketHistory);
 
-  const num = await nextTicketNumber();
-
-  const newTicket = ticketRepo.create({
+  const ticket = ticketRepository.create({
+    protocolo: await nextTicketNumber(),
     titulo: parsed.title,
     descricao: parsed.description,
     categoryId: parsed.categoryId,
     subCategoryId: parsed.subCategoryId || undefined,
     prioridade: parsed.priority,
     status: TicketStatus.ABERTO,
-    protocolo: num,
     clienteId: session.id,
     creatorIp: ip,
     slaDueAt: dueDates.slaDueAt,
     responseDueAt: dueDates.responseDueAt,
     isArchived: false,
   });
+  await ticketRepository.save(ticket);
 
-  const ticket = await ticketRepo.save(newTicket);
-
-  // Add history action
-  const history = historyRepo.create({
+  const history = ticketHistoryRepository.create({
     ticketId: ticket.id,
     actorId: session.id,
     action: HistoryAction.CRIACAO,
     toValue: TicketStatus.ABERTO,
   });
-  await historyRepo.save(history);
+  await ticketHistoryRepository.save(history);
 
   revalidatePath("/cliente");
   redirect(`/tickets/${ticket.id}`);
 }
 
 export async function createUserAction(formData: FormData) {
+  await initializeDatabase();
+  
   const session = await getSession();
-  if (!session || session.role !== Role.ADMINISTRADOR) throw new Error("Sem permissao");
+  if (!session || session.role !== Role.ADMIN) throw new Error("Sem permissao");
 
   const name = String(formData.get("name"));
   const email = String(formData.get("email"));
@@ -142,129 +139,118 @@ export async function createUserAction(formData: FormData) {
   const salt = bcrypt.genSaltSync(10);
   const hashedPassword = bcrypt.hashSync(password, salt);
 
-  const ds = await getDataSource();
-  const userRepo = ds.getRepository(User);
-
-  const user = userRepo.create({
+  const userRepository = getRepository(User);
+  const user = userRepository.create({
     name,
     email,
     role,
     passwordHash: hashedPassword,
     isActive: true,
   });
-
-  await userRepo.save(user);
+  await userRepository.save(user);
 
   revalidatePath("/admin");
 }
 
 export async function updateTicketStatusAction(ticketId: string, newStatus: string) {
+  await initializeDatabase();
+  
   const session = await getSession();
   if (
     !session ||
-    (session.role !== Role.OPERADOR &&
-      session.role !== Role.SUPERVISOR &&
-      session.role !== Role.ADMINISTRADOR)
+    (session.role !== Role.TECNICO && session.role !== Role.ADMIN)
   ) {
     throw new Error("Sem permissao");
   }
 
-  const ds = await getDataSource();
-  const ticketRepo = ds.getRepository(Ticket);
-  const historyRepo = ds.getRepository(TicketHistory);
+  const ticketRepository = getRepository(Ticket);
+  const ticketHistoryRepository = getRepository(TicketHistory);
 
-  const ticket = await ticketRepo.findOne({ where: { id: ticketId } });
+  const ticket = await ticketRepository.findOne({ where: { id: ticketId } });
   if (!ticket) throw new Error("Chamado não encontrado");
 
   const oldStatus = ticket.status;
-  ticket.status = newStatus as TicketStatus;
 
   if (newStatus === TicketStatus.RESOLVIDO) {
     ticket.resolvedAt = new Date();
-  } else if (newStatus === TicketStatus.FECHADO) {
+  } else if (newStatus === TicketStatus.ENCERRADO) {
     ticket.closedAt = new Date();
-    ticket.dataFechamento = new Date();
   }
+  ticket.status = newStatus as TicketStatus;
+  await ticketRepository.save(ticket);
 
-  await ticketRepo.save(ticket);
-
-  const history = historyRepo.create({
+  const history = ticketHistoryRepository.create({
     ticketId: ticket.id,
     actorId: session.id,
     action: HistoryAction.MUDANCA_STATUS,
     fromValue: oldStatus,
     toValue: newStatus,
   });
-  await historyRepo.save(history);
+  await ticketHistoryRepository.save(history);
 
   revalidatePath("/suporte");
   revalidatePath(`/tickets/${ticketId}`);
 }
 
 export async function assignTicketAction(ticketId: string, assigneeId: string) {
+  await initializeDatabase();
+  
   const session = await getSession();
-  if (
-    !session ||
-    (session.role !== Role.SUPERVISOR && session.role !== Role.ADMINISTRADOR)
-  ) {
+  if (!session || session.role !== Role.ADMIN) {
     throw new Error("Sem permissao");
   }
 
-  const ds = await getDataSource();
-  const ticketRepo = ds.getRepository(Ticket);
-  const historyRepo = ds.getRepository(TicketHistory);
+  const ticketRepository = getRepository(Ticket);
+  const ticketHistoryRepository = getRepository(TicketHistory);
 
-  const ticket = await ticketRepo.findOne({ where: { id: ticketId } });
+  const ticket = await ticketRepository.findOne({ where: { id: ticketId } });
   if (!ticket) throw new Error("Chamado não encontrado");
 
   ticket.responsavelId = assigneeId || undefined;
-  ticket.status = assigneeId ? TicketStatus.EM_ANDAMENTO : TicketStatus.ABERTO;
+  ticket.status = assigneeId ? TicketStatus.EM_ATENDIMENTO : TicketStatus.ABERTO;
+  await ticketRepository.save(ticket);
 
-  await ticketRepo.save(ticket);
-
-  const history = historyRepo.create({
+  const history = ticketHistoryRepository.create({
     ticketId: ticket.id,
     actorId: session.id,
     action: HistoryAction.TROCA_RESPONSAVEL,
     toValue: assigneeId || "Nenhum",
   });
-  await historyRepo.save(history);
+  await ticketHistoryRepository.save(history);
 
   revalidatePath("/suporte");
   revalidatePath(`/tickets/${ticketId}`);
 }
 
 export async function archiveTicketAction(ticketId: string, isArchived: boolean) {
+  await initializeDatabase();
+  
   const session = await getSession();
   if (!session) throw new Error("Não autenticado");
 
-  const ds = await getDataSource();
-  const ticketRepo = ds.getRepository(Ticket);
-  const historyRepo = ds.getRepository(TicketHistory);
+  const ticketRepository = getRepository(Ticket);
+  const ticketHistoryRepository = getRepository(TicketHistory);
 
-  const ticket = await ticketRepo.findOne({ where: { id: ticketId } });
+  const ticket = await ticketRepository.findOne({ where: { id: ticketId } });
   if (!ticket) throw new Error("Chamado não encontrado");
 
   const isOwner = ticket.clienteId === session.id;
-  const isStaff =
-    session.role === Role.OPERADOR ||
-    session.role === Role.SUPERVISOR ||
-    session.role === Role.ADMINISTRADOR;
+  const isStaff = session.role === Role.TECNICO || session.role === Role.ADMIN;
 
   if (!isOwner && !isStaff) {
     throw new Error("Sem permissão");
   }
 
   ticket.isArchived = isArchived;
-  await ticketRepo.save(ticket);
+  await ticketRepository.save(ticket);
 
-  const history = historyRepo.create({
+  const history = ticketHistoryRepository.create({
     ticketId: ticket.id,
     actorId: session.id,
     action: HistoryAction.ALTERACAO,
     toValue: isArchived ? "ARQUIVADO" : "RESTAURADO",
   });
-  await historyRepo.save(history);
+  await ticketHistoryRepository.save(history);
 
   revalidatePath("/suporte");
   revalidatePath("/tickets");
@@ -273,26 +259,24 @@ export async function archiveTicketAction(ticketId: string, isArchived: boolean)
 }
 
 export async function deleteTicketAction(ticketId: string) {
+  await initializeDatabase();
+  
   const session = await getSession();
   if (!session) throw new Error("Não autenticado");
 
-  const ds = await getDataSource();
-  const ticketRepo = ds.getRepository(Ticket);
+  const ticketRepository = getRepository(Ticket);
 
-  const ticket = await ticketRepo.findOne({ where: { id: ticketId } });
+  const ticket = await ticketRepository.findOne({ where: { id: ticketId } });
   if (!ticket) throw new Error("Chamado não encontrado");
 
   const isOwner = ticket.clienteId === session.id;
-  const isStaff =
-    session.role === Role.OPERADOR ||
-    session.role === Role.SUPERVISOR ||
-    session.role === Role.ADMINISTRADOR;
+  const isStaff = session.role === Role.TECNICO || session.role === Role.ADMIN;
 
   if (!isOwner && !isStaff) {
     throw new Error("Sem permissão");
   }
 
-  await ticketRepo.softRemove(ticket); // Use soft delete!
+  await ticketRepository.remove(ticket);
 
   revalidatePath("/suporte");
   revalidatePath("/tickets");

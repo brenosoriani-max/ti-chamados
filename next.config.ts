@@ -6,7 +6,7 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "8mb"
     }
   },
-  serverExternalPackages: ["typeorm"]
+  serverExternalPackages: ["typeorm",  "mysql2", "reflect-metadata"]
 };
 
 export default nextConfig;

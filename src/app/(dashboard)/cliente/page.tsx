@@ -10,23 +10,16 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { createTicketAction } from "@/app/actions";
-import { getDataSource } from "@/lib/db";
-import { Category } from "@/entities/Category";
 import { getSession } from "@/lib/auth";
 import { Role } from "@/types";
+import { getEnabledCategories } from "@/lib/categories";
 
 export default async function ClientePage() {
   const session = await getSession();
   if (!session) redirect("/login");
-  if (session.role !== Role.CLIENTE && session.role !== Role.ADMINISTRADOR) redirect("/suporte");
+  if (session.role !== Role.CLIENTE && session.role !== Role.ADMIN) redirect("/suporte");
 
-  const ds = await getDataSource();
-  const categoryRepo = ds.getRepository(Category);
-  const categories = await categoryRepo.find({
-    where: { isActive: true },
-    order: { name: "ASC" },
-    select: ["id", "name"],
-  });
+  const categories = await getEnabledCategories();
 
   return (
     <div className="max-w-5xl mx-auto space-y-12">
@@ -75,7 +68,7 @@ export default async function ClientePage() {
                     <option value="BAIXA">Baixa - Rotina</option>
                     <option value="MEDIA">Média - Importante</option>
                     <option value="ALTA">Alta - Urgente</option>
-                    <option value="URGENTE">Urgente - Impedimento Total</option>
+                    <option value="CRITICA">Crítica - Impedimento Total</option>
                   </Select>
                 </div>
               </div>

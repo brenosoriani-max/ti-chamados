@@ -1,13 +1,18 @@
+import "reflect-metadata";
 import { NextRequest, NextResponse } from "next/server";
-import { Role } from "@/types";
-import { prisma } from "@/lib/prisma";
+import { Role, SessaoRemotaStatus } from "@/types";
+import { initializeDatabase, getRepository } from "@/lib/database";
 import { requireSession } from "@/lib/auth";
 import { remoteStartSchema } from "@/lib/validators";
+import { Terminal } from "@/entities/Terminal";
+import { SessaoRemota } from "@/entities/SessaoRemota";
+import { appendRemoteLog } from "@/lib/remote-logs";
 
 export async function POST(request: NextRequest) {
   const usuario = await requireSession([Role.TECNICO, Role.ADMIN]);
-  const parsed = remoteStartSchema.safeParse(await request.json());
+  await initializeDatabase();
 
+  const parsed = remoteStartSchema.safeParse(await request.json());
   if (!parsed.success) {
     return NextResponse.json(
       { error: "Dados da sessao invalidos", details: parsed.error.flatten() },
@@ -15,9 +20,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const terminal = await prisma.terminal.findUnique({
-    where: { id: parsed.data.terminalId },
-  });
+  const terminalRepository = getRepository(Terminal);
+  const terminal = await terminalRepository.findOne({ where: { id: parsed.data.terminalId } });
 
   if (!terminal) {
     return NextResponse.json({ error: "Terminal nao encontrado" }, { status: 404 });
@@ -27,24 +31,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Terminal offline" }, { status: 409 });
   }
 
-  const sessao = await prisma.sessaoRemota.create({
-    data: {
-      terminalId: terminal.id,
+  const sessaoRepository = getRepository(SessaoRemota);
+  const sessao = sessaoRepository.create({
+    terminalId: terminal.id,
+    usuarioId: usuario.id,
+    status: SessaoRemotaStatus.AGUARDANDO,
+    logs: appendRemoteLog(null, {
+      action: "sessao:create",
       usuarioId: usuario.id,
-      status: "AGUARDANDO",
-      logs: [
-        {
-          action: "sessao:create",
-          usuarioId: usuario.id,
-          at: new Date().toISOString(),
-        },
-      ],
-    },
-    include: {
-      terminal: true,
-      usuario: { select: { id: true, name: true } },
-    },
+      at: new Date().toISOString(),
+    }),
+  });
+  await sessaoRepository.save(sessao);
+
+  const saved = await sessaoRepository.findOne({
+    where: { id: sessao.id },
+    relations: ["terminal", "usuario"],
   });
 
-  return NextResponse.json(sessao, { status: 201 });
+  return NextResponse.json(saved, { status: 201 });
 }
