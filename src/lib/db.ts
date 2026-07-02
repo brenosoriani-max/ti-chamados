@@ -2,7 +2,7 @@ import "reflect-metadata";
 import { DataSource } from "typeorm";
 import bcrypt from "bcryptjs";
 import { Role, Priority } from "../types";
-import { User } from "../entities/User";
+import { User } from "@/entities/User";
 import { Category } from "../entities/Category";
 import { SubCategory } from "../entities/SubCategory";
 import { SLA } from "../entities/SLA";

@@ -6,7 +6,7 @@ import {
   ManyToOne,
   type Relation,
 } from "typeorm";
-import type { User } from "./User";
+import { User } from "./User";
 import { NotificationType } from "../types";
 
 @Entity("notifications")
@@ -14,10 +14,10 @@ export class Notification {
   @PrimaryGeneratedColumn("uuid")
   id!: string;
 
-  @Column()
+  @Column({ type: "varchar", length: 36 })
   userId!: string;
 
-  @ManyToOne("User", (u: any) => u.notifications, { onDelete: "CASCADE" })
+  @ManyToOne(() => User, (u) => u.notifications, { onDelete: "CASCADE" })
   user!: Relation<User>;
 
   @Column({

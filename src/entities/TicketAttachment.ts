@@ -6,24 +6,24 @@ import {
   ManyToOne,
   type Relation,
 } from "typeorm";
-import type { Ticket } from "./Ticket";
-import type { TicketMessage } from "./TicketMessage";
+import { Ticket } from "./Ticket";
+import { TicketMessage } from "./TicketMessage";
 
 @Entity("ticket_attachments")
 export class TicketAttachment {
   @PrimaryGeneratedColumn("uuid")
   id!: string;
 
-  @Column()
+  @Column({ type: "varchar", length: 36 })
   ticketId!: string;
 
-  @ManyToOne("Ticket", (t: any) => t.attachments, { onDelete: "CASCADE" })
+  @ManyToOne(() => Ticket, (t) => t.attachments, { onDelete: "CASCADE" })
   ticket!: Relation<Ticket>;
 
-  @Column({ nullable: true })
+  @Column({ type: "varchar", length: 36, nullable: true })
   messageId?: string;
 
-  @ManyToOne("TicketMessage", (m: any) => m.attachments, { onDelete: "SET NULL", nullable: true })
+  @ManyToOne(() => TicketMessage, (m) => m.attachments, { onDelete: "SET NULL", nullable: true })
   message?: Relation<TicketMessage>;
 
   @Column({ type: "varchar", length: 255 })

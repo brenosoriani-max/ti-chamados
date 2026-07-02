@@ -8,8 +8,8 @@ import {
   Index,
 } from "typeorm";
 import { SessaoRemotaStatus } from "../types";
-import type { Terminal } from "./Terminal";
-import type { User } from "./User";
+import { Terminal } from "./Terminal";
+import { User } from "./User";
 
 @Entity("sessoes_remotas")
 @Index(["terminalId", "status"])
@@ -19,16 +19,16 @@ export class SessaoRemota {
   @PrimaryGeneratedColumn("uuid")
   id!: string;
 
-  @Column()
+  @Column({ type: "varchar", length: 36 })
   terminalId!: string;
 
-  @ManyToOne("Terminal", (t: any) => t.sessoesRemotas, { onDelete: "CASCADE" })
+  @ManyToOne(() => Terminal, (t) => t.sessoesRemotas, { onDelete: "CASCADE" })
   terminal!: Relation<Terminal>;
 
-  @Column()
+  @Column({ type: "varchar", length: 36 })
   usuarioId!: string;
 
-  @ManyToOne("User", (u: any) => u.sessoesRemotas, { onDelete: "CASCADE" })
+  @ManyToOne(() => User, (u) => u.sessoesRemotas, { onDelete: "CASCADE" })
   usuario!: Relation<User>;
 
   @Column({

@@ -11,13 +11,13 @@ import {
   type Relation,
 } from "typeorm";
 import { TicketStatus, Priority } from "../types";
-import type { User } from "./User";
-import type { Category } from "./Category";
-import type { SubCategory } from "./SubCategory";
-import type { TicketMessage } from "./TicketMessage";
-import type { TicketAttachment } from "./TicketAttachment";
-import type { TicketHistory } from "./TicketHistory";
-import type { Equipment } from "./Equipment";
+import { User } from "./User";
+import { Category } from "./Category";
+import { SubCategory } from "./SubCategory";
+import { TicketMessage } from "./TicketMessage";
+import { TicketAttachment } from "./TicketAttachment";
+import { TicketHistory } from "./TicketHistory";
+import { Equipment } from "./Equipment";
 
 @Entity("tickets")
 @Index(["status", "prioridade"])
@@ -53,28 +53,28 @@ export class Ticket {
   })
   prioridade!: Priority;
 
-  @Column()
+  @Column({ type: "varchar", length: 36 })
   clienteId!: string;
 
-  @ManyToOne("User", (user: any) => user.ticketsCriados)
+  @ManyToOne(() => User, (user) => user.ticketsCriados)
   cliente!: Relation<User>;
 
-  @Column({ nullable: true })
+  @Column({ type: "varchar", length: 36, nullable: true })
   responsavelId?: string;
 
-  @ManyToOne("User", (user: any) => user.ticketsAtendidos, { nullable: true })
+  @ManyToOne(() => User, (user) => user.ticketsAtendidos, { nullable: true })
   responsavel?: Relation<User>;
 
-  @Column()
+  @Column({ type: "varchar", length: 36 })
   categoryId!: string;
 
-  @ManyToOne("Category", (cat: any) => cat.tickets)
+  @ManyToOne(() => Category, (cat) => cat.tickets)
   category!: Relation<Category>;
 
-  @Column({ nullable: true })
+  @Column({ type: "varchar", length: 36, nullable: true })
   subCategoryId?: string;
 
-  @ManyToOne("SubCategory", (sub: any) => sub.tickets, { nullable: true })
+  @ManyToOne(() => SubCategory, (sub) => sub.tickets, { nullable: true })
   subCategory?: Relation<SubCategory>;
 
   @Column({ type: "varchar", length: 255, nullable: true })
@@ -107,19 +107,19 @@ export class Ticket {
   @Column({ type: "timestamp", nullable: true })
   closedAt?: Date;
 
-  @Column({ nullable: true })
+  @Column({ type: "varchar", length: 36, nullable: true })
   equipmentId?: string;
 
-  @ManyToOne("Equipment", (eq: any) => eq.tickets, { onDelete: "SET NULL", nullable: true })
+  @ManyToOne(() => Equipment, (eq) => eq.tickets, { onDelete: "SET NULL", nullable: true })
   equipment?: Relation<Equipment>;
 
-  @OneToMany("TicketMessage", (msg: any) => msg.ticket)
+  @OneToMany(() => TicketMessage, (msg) => msg.ticket)
   messages!: Relation<TicketMessage>[];
 
-  @OneToMany("TicketAttachment", (attach: any) => attach.ticket)
+  @OneToMany(() => TicketAttachment, (attach) => attach.ticket)
   attachments!: Relation<TicketAttachment>[];
 
-  @OneToMany("TicketHistory", (hist: any) => hist.ticket)
+  @OneToMany(() => TicketHistory, (hist) => hist.ticket)
   history!: Relation<TicketHistory>[];
 
   @CreateDateColumn()

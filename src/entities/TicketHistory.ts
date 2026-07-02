@@ -6,8 +6,8 @@ import {
   ManyToOne,
   type Relation,
 } from "typeorm";
-import type { Ticket } from "./Ticket";
-import type { User } from "./User";
+import { Ticket } from "./Ticket";
+import { User } from "./User";
 import { HistoryAction } from "../types";
 
 @Entity("ticket_histories")
@@ -15,16 +15,16 @@ export class TicketHistory {
   @PrimaryGeneratedColumn("uuid")
   id!: string;
 
-  @Column()
+  @Column({ type: "varchar", length: 36 })
   ticketId!: string;
 
-  @ManyToOne("Ticket", (t: any) => t.history, { onDelete: "CASCADE" })
+  @ManyToOne(() => Ticket, (t) => t.history, { onDelete: "CASCADE" })
   ticket!: Relation<Ticket>;
 
-  @Column({ nullable: true })
+  @Column({ type: "varchar", length: 36, nullable: true })
   actorId?: string;
 
-  @ManyToOne("User", (u: any) => u.histories, { onDelete: "SET NULL", nullable: true })
+  @ManyToOne(() => User, (u) => u.histories, { onDelete: "SET NULL", nullable: true })
   actor?: Relation<User>;
 
   @Column({

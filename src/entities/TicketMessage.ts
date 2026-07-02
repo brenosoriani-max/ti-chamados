@@ -8,25 +8,25 @@ import {
   OneToMany,
   type Relation,
 } from "typeorm";
-import type { Ticket } from "./Ticket";
-import type { User } from "./User";
-import type { TicketAttachment } from "./TicketAttachment";
+import { Ticket } from "./Ticket";
+import { User } from "./User";
+import { TicketAttachment } from "./TicketAttachment";
 
 @Entity("ticket_messages")
 export class TicketMessage {
   @PrimaryGeneratedColumn("uuid")
   id!: string;
 
-  @Column()
+  @Column({ type: "varchar", length: 36 })
   ticketId!: string;
 
-  @ManyToOne("Ticket", (ticket: any) => ticket.messages, { onDelete: "CASCADE" })
+  @ManyToOne(() => Ticket, (ticket) => ticket.messages, { onDelete: "CASCADE" })
   ticket!: Relation<Ticket>;
 
-  @Column()
+  @Column({ type: "varchar", length: 36 })
   authorId!: string;
 
-  @ManyToOne("User", (user: any) => user.messages)
+  @ManyToOne(() => User, (user) => user.messages)
   author!: Relation<User>;
 
   @Column({ type: "text" })
@@ -38,7 +38,7 @@ export class TicketMessage {
   @Column({ type: "timestamp", nullable: true })
   editedAt?: Date;
 
-  @OneToMany("TicketAttachment", (attach: any) => attach.message)
+  @OneToMany(() => TicketAttachment, (attach) => attach.message)
   attachments!: Relation<TicketAttachment>[];
 
   @CreateDateColumn()

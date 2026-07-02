@@ -8,9 +8,9 @@ import {
   OneToMany,
   type Relation,
 } from "typeorm";
-import type { SubCategory } from "./SubCategory";
-import type { Ticket } from "./Ticket";
-import type { KnowledgeArticle } from "./KnowledgeArticle";
+import { SubCategory } from "./SubCategory";
+import { Ticket } from "./Ticket";
+import { KnowledgeArticle } from "./KnowledgeArticle";
 
 @Entity("categories")
 export class Category {
@@ -26,13 +26,13 @@ export class Category {
   @Column({ type: "boolean", default: true })
   isActive!: boolean;
 
-  @OneToMany("SubCategory", (sub: any) => sub.category)
+  @OneToMany(() => SubCategory, (sub) => sub.category)
   subCategories!: Relation<SubCategory>[];
 
-  @OneToMany("Ticket", (ticket: any) => ticket.category)
+  @OneToMany(() => Ticket, (ticket) => ticket.category)
   tickets!: Relation<Ticket>[];
 
-  @OneToMany("KnowledgeArticle", (article: any) => article.category)
+  @OneToMany(() => KnowledgeArticle, (article) => article.category)
   articles!: Relation<KnowledgeArticle>[];
 
   @CreateDateColumn()

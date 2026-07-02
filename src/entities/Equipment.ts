@@ -7,7 +7,7 @@ import {
   OneToMany,
   type Relation,
 } from "typeorm";
-import type { Ticket } from "./Ticket";
+import { Ticket } from "./Ticket";
 
 @Entity("equipments")
 export class Equipment {
@@ -62,7 +62,7 @@ export class Equipment {
   @Column({ type: "varchar", length: 255, nullable: true })
   responsibleUserId?: string;
 
-  @OneToMany("Ticket", (ticket: any) => ticket.equipment)
+  @OneToMany(() => Ticket, (ticket) => ticket.equipment)
   tickets!: Relation<Ticket>[];
 
   @CreateDateColumn()

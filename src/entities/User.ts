@@ -9,11 +9,11 @@ import {
   type Relation,
 } from "typeorm";
 import { Role } from "../types";
-import type { Ticket } from "./Ticket";
-import type { TicketMessage } from "./TicketMessage";
-import type { TicketHistory } from "./TicketHistory";
-import type { Notification } from "./Notification";
-import type { SessaoRemota } from "./SessaoRemota";
+import { Ticket } from "./Ticket";
+import { TicketMessage } from "./TicketMessage";
+import { TicketHistory } from "./TicketHistory";
+import { Notification } from "./Notification";
+import { SessaoRemota } from "./SessaoRemota";
 
 @Entity("users")
 export class User {
@@ -51,22 +51,22 @@ export class User {
   @Column({ type: "varchar", length: 45, nullable: true })
   lastIp?: string;
 
-  @OneToMany("Ticket", (ticket: any) => ticket.cliente)
+  @OneToMany(() => Ticket, (ticket) => ticket.cliente)
   ticketsCriados!: Relation<Ticket>[];
 
-  @OneToMany("Ticket", (ticket: any) => ticket.responsavel)
+  @OneToMany(() => Ticket, (ticket) => ticket.responsavel)
   ticketsAtendidos!: Relation<Ticket>[];
 
-  @OneToMany("TicketMessage", (message: any) => message.author)
+  @OneToMany(() => TicketMessage, (message) => message.author)
   messages!: Relation<TicketMessage>[];
 
-  @OneToMany("TicketHistory", (history: any) => history.actor)
+  @OneToMany(() => TicketHistory, (history) => history.actor)
   histories!: Relation<TicketHistory>[];
 
-  @OneToMany("Notification", (notification: any) => notification.user)
+  @OneToMany(() => Notification, (notification) => notification.user)
   notifications!: Relation<Notification>[];
 
-  @OneToMany("SessaoRemota", (sessao: any) => sessao.usuario)
+  @OneToMany(() => SessaoRemota, (sessao) => sessao.usuario)
   sessoesRemotas!: Relation<SessaoRemota>[];
 
   @CreateDateColumn()
