@@ -5,9 +5,13 @@ import {
   Key,
   Point,
 } from "@nut-tree-fork/nut-js";
-import { KeyboardKeyPayload, MouseClickPayload, MouseMovePayload, MouseScrollPayload } from "../types/input";
 
-
+import type {
+  MouseClickPayload,
+  MouseMovePayload,
+  MouseScrollPayload,
+  KeyboardKeyPayload,
+} from "../../../../packages/shared/src/types/input";
 
 function mapButton(button: string): Button {
   switch (button) {

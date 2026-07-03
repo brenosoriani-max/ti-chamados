@@ -23,7 +23,7 @@ app.prepare().then(async () => {
     cors: { origin: "*", methods: ["GET", "POST"] },
   });
 
-  const { setupRemoteSocket } = await import("./server/socket/setup.ts");
+  const { setupRemoteSocket } = require("./server/socket/setup.ts");
   setupRemoteSocket(io);
 
   io.on("connection", (socket) => {
