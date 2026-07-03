@@ -3,11 +3,12 @@ import { initializeDatabase, getRepository } from "@/lib/database";
 import { User } from "@/entities/User";
 import { Ticket } from "@/entities/Ticket";
 import { Category } from "@/entities/Category";
-import { Role, TicketStatus } from "@/types";
+import { HistoryAction, Role, TicketStatus } from "@/types";
 import { StatCard } from "@/components/stat-card";
 import { BarChart3, Gauge, ShieldCheck, Star, Users } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
+import { TicketHistory } from "@/entities/TicketHistory";
 
 export async function AdminStatsContainer() {
   await initializeDatabase();
@@ -73,8 +74,22 @@ export async function AdminStatsContainer() {
     })
   );
 
-  // Rating médio (valor padrão enquanto não temos a entidade Rating)
-  const ratingValue = 4.5;
+ 
+async function getAverageRating(): Promise<number> {
+  const historyRepository = getRepository(TicketHistory);
+
+  const result = await historyRepository
+    .createQueryBuilder("history")
+    .select("AVG(CAST(history.toValue AS DECIMAL(3,1)))", "media")
+    .where("history.action = :action", { action: HistoryAction.AVALIACAO })
+    .getRawOne();
+
+  return result?.media ? parseFloat(result.media) : 0;
+}
+ 
+
+ const ratingValue = await getAverageRating();
+ 
 
   return (
     <>

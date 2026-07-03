@@ -26,12 +26,7 @@ export default async function AdminPage() {
           <h1 className="text-4xl font-black tracking-tight text-foreground">Visão Geral</h1>
           <p className="text-sm text-muted-foreground font-medium">Controle central de operações, usuários e performance.</p>
         </div>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" className="rounded-2xl border-border/40 bg-card/40 h-12 px-6 text-[10px] font-black uppercase tracking-widest hover:bg-primary/5 hover:text-primary transition-all">
-            <Settings className="mr-2 h-3.5 w-3.5" />
-            Configurações
-          </Button>
-        </div>
+       
       </header>
 
       <Suspense fallback={
@@ -48,7 +43,7 @@ export default async function AdminPage() {
         <AdminStatsContainer />
       </Suspense>
 
-      <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-2">
         <Card className="border-none shadow-2xl shadow-teal-500/5 bg-card/40 rounded-3xl overflow-hidden border border-border/20 group hover:border-primary/20 transition-all">
           <div className="h-1.5 w-full premium-gradient opacity-80" />
           <CardHeader className="p-8 pb-4">
