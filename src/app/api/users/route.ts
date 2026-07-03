@@ -85,3 +85,41 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export async function DELETE(request: NextRequest) {
+  try {
+    await requireSession([Role.ADMIN]);
+    await initializeDatabase();
+    const userRepository = getRepository(User);
+    const { searchParams } = new URL(request.url); 
+
+    const id = searchParams.get("id");
+    if (!id) {
+      return NextResponse.json(
+        { error: "User ID is required" },
+        { status: 400 }
+      );
+    }
+    const user = await userRepository.findOne({ where: { id } });
+    if (!user) {
+      return NextResponse.json(
+        { error: "User not found" },
+        { status: 404 }
+      );
+    }
+
+    await userRepository.remove(user);
+    return NextResponse.json({ message: "User deleted successfully" });
+  } catch (error:any) {
+    if(error.code ==='ERR_ROW_IS_REFERENCED_2') {
+      return NextResponse.json(
+        { error: "Não é possível excluir este usuário, pois ele está associado a registros existentes." },
+        { status: 400 } 
+      );
+    } 
+    return NextResponse.json(
+      { error: "Erro ao deletar usuário" },
+      { status: 500 }
+    );
+  }
+}

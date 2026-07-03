@@ -44,7 +44,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
 
   return (
     <AppShell>
-      <div className="max-w-5xl mx-auto space-y-8">
+      <div className="max-w-5xl w-full mx-auto space-y-8">
         <div className="flex items-center gap-4">
           <Link href="/tickets" className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground mr-2">
             <ArrowLeft className="h-4 w-4" />

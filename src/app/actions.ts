@@ -14,6 +14,7 @@ import { TicketHistory } from "@/entities/TicketHistory";
 import { Role, TicketStatus, HistoryAction } from "@/types";
 import { ticketCreateSchema } from "@/lib/validators";
 import { getDueDates, nextTicketNumber } from "@/lib/tickets";
+import { toast } from "sonner";
 
 export async function registerAction(formData: FormData) {
   await initializeDatabase();
@@ -127,29 +128,41 @@ export async function createTicketAction(formData: FormData) {
 
 export async function createUserAction(formData: FormData) {
   await initializeDatabase();
-  
+
   const session = await getSession();
-  if (!session || session.role !== Role.ADMIN) throw new Error("Sem permissao");
+  if (!session || session.role !== Role.ADMIN) {
+    return { success: false, message: "Sem permissão" };
+  }
 
   const name = String(formData.get("name"));
   const email = String(formData.get("email"));
   const role = formData.get("role") as Role;
   const password = String(formData.get("password") || "ti123456");
 
-  const salt = bcrypt.genSaltSync(10);
-  const hashedPassword = bcrypt.hashSync(password, salt);
+  try {
+    const salt = bcrypt.genSaltSync(10);
+    const hashedPassword = bcrypt.hashSync(password, salt);
 
-  const userRepository = getRepository(User);
-  const user = userRepository.create({
-    name,
-    email,
-    role,
-    passwordHash: hashedPassword,
-    isActive: true,
-  });
-  await userRepository.save(user);
+    const userRepository = getRepository(User);
+    const user = userRepository.create({
+      name,
+      email,
+      role,
+      passwordHash: hashedPassword,
+      isActive: true,
+    });
+    await userRepository.save(user);
 
-  revalidatePath("/admin");
+    revalidatePath("/admin");
+    revalidatePath("/admin/usuarios");
+
+    return { success: true, message: "Usuário cadastrado com sucesso" };
+  } catch (error: any) {
+    if (error.code === "ER_DUP_ENTRY") {
+      return { success: false, message: "Já existe um usuário com esse e-mail" };
+    }
+    return { success: false, message: "Erro ao cadastrar usuário" };
+  }
 }
 
 export async function updateTicketStatusAction(ticketId: string, newStatus: string) {
