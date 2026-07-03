@@ -7,6 +7,8 @@ import { remoteStartSchema } from "@/lib/validators";
 import { Terminal } from "@/entities/Terminal";
 import { SessaoRemota } from "@/entities/SessaoRemota";
 import { appendRemoteLog } from "@/lib/remote-logs";
+import { emitToTerminal, emitToSession, mapSessionTerminal } from "@/lib/remote/socket-bridge";
+import { remoteSocketEvents } from "@/lib/remote/events";
 
 export async function POST(request: NextRequest) {
   const usuario = await requireSession([Role.TECNICO, Role.ADMIN]);
@@ -47,6 +49,18 @@ export async function POST(request: NextRequest) {
   const saved = await sessaoRepository.findOne({
     where: { id: sessao.id },
     relations: ["terminal", "usuario"],
+  });
+
+  mapSessionTerminal(sessao.id, terminal.id);
+  emitToTerminal(terminal.id, remoteSocketEvents.sessionCreate, {
+    sessaoId: sessao.id,
+    terminalId: terminal.id,
+    usuarioId: usuario.id,
+    usuarioNome: usuario.name,
+  });
+  emitToSession(sessao.id, remoteSocketEvents.sessionState, {
+    sessaoId: sessao.id,
+    status: SessaoRemotaStatus.AGUARDANDO,
   });
 
   return NextResponse.json(saved, { status: 201 });

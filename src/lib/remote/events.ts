@@ -1,26 +1,34 @@
-export const remoteSocketEvents = {
-  terminalRegister: "terminal:register",
-  terminalHeartbeat: "terminal:heartbeat",
-  terminalDisconnect: "terminal:disconnect",
-  sessionCreate: "sessao:create",
-  sessionAccept: "sessao:accept",
-  sessionReject: "sessao:reject",
-  sessionEnd: "sessao:end",
-  webRtcOffer: "webrtc:offer",
-  webRtcAnswer: "webrtc:answer",
-  webRtcCandidate: "webrtc:candidate",
-  mouseMove: "mouse:move",
-  mouseClick: "mouse:click",
-  mouseScroll: "mouse:scroll",
-  keyboardKeyDown: "keyboard:keyDown",
-  keyboardKeyUp: "keyboard:keyUp",
-  clipboardGet: "clipboard:get",
-  clipboardSet: "clipboard:set",
-} as const;
+export {
+  remoteSocketEvents,
+  defaultRtcConfiguration,
+  HEARTBEAT_INTERVAL_MS,
+  HEARTBEAT_TIMEOUT_MS,
+} from "@shared/events";
+export type { RemoteSocketEvent } from "@shared/events";
 
-export type RemoteSocketEvent =
-  (typeof remoteSocketEvents)[keyof typeof remoteSocketEvents];
-
-export const defaultRtcConfiguration: RTCConfiguration = {
-  iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
-};
+export type {
+  TerminalRegisterPayload,
+  TerminalHeartbeatPayload,
+  TerminalRegisteredPayload,
+  TerminalUpdatedPayload,
+  SessionCreatePayload,
+  SessionAcceptPayload,
+  SessionRejectPayload,
+  SessionEndPayload,
+  SessionStatePayload,
+  WebRtcOfferPayload,
+  WebRtcAnswerPayload,
+  WebRtcCandidatePayload,
+  QualityChangePayload,
+  MouseMovePayload,
+  MouseClickPayload,
+  MouseScrollPayload,
+  KeyboardKeyPayload,
+  ClipboardSetPayload,
+  ClipboardGetPayload,
+  ClipboardResponsePayload,
+  FileTransferStartPayload,
+  FileTransferChunkPayload,
+  FileTransferEndPayload,
+  FileTransferCancelPayload,
+} from "@shared/index";

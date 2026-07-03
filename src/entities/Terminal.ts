@@ -53,6 +53,33 @@ export class Terminal {
   @Column({ type: "varchar", length: 50, nullable: true })
   versaoAgente?: string;
 
+  @Column({ type: "varchar", length: 36, unique: true, nullable: true })
+  equipmentUuid?: string;
+
+  @Column({ type: "varchar", length: 255, nullable: true })
+  hostname?: string;
+
+  @Column({ type: "varchar", length: 100, nullable: true })
+  windowsVersion?: string;
+
+  @Column({ type: "varchar", length: 50, nullable: true })
+  arquitetura?: string;
+
+  @Column({ type: "int", nullable: true })
+  memoriaRamGb?: number;
+
+  @Column({ type: "varchar", length: 255, nullable: true })
+  processador?: string;
+
+  @Column({ type: "varchar", length: 255, nullable: true })
+  usuarioLogado?: string;
+
+  @Column({ type: "varchar", length: 50, nullable: true })
+  resolucaoTela?: string;
+
+  @Column({ type: "int", nullable: true })
+  quantidadeMonitores?: number;
+
   @OneToMany(() => SessaoRemota, (sessao) => sessao.terminal)
   sessoesRemotas!: Relation<SessaoRemota>[];
 

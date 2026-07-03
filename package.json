@@ -3,9 +3,11 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "node server.js",
+    "dev": "tsx server.js",
     "build": "next build",
-    "start": "node server.js",
+    "start": "tsx server.js",
+    "agent:dev": "npm run dev --prefix apps/agent",
+    "agent:build": "npm run build --prefix apps/agent",
     "lint": "next lint",
     "db:migrate": "typeorm migration:run -d src/lib/database/data-source.ts",
     "db:generate": "typeorm migration:generate -d src/lib/database/data-source.ts"

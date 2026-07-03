@@ -6,6 +6,8 @@ import { requireSession } from "@/lib/auth";
 import { remoteEndSchema } from "@/lib/validators";
 import { SessaoRemota } from "@/entities/SessaoRemota";
 import { appendRemoteLog } from "@/lib/remote-logs";
+import { emitToTerminal, emitToSession } from "@/lib/remote/socket-bridge";
+import { remoteSocketEvents } from "@/lib/remote/events";
 
 export async function POST(request: NextRequest) {
   const usuario = await requireSession([Role.TECNICO, Role.ADMIN]);
@@ -42,6 +44,13 @@ export async function POST(request: NextRequest) {
   const sessao = await sessaoRepository.findOne({
     where: { id: current.id },
     relations: ["terminal", "usuario"],
+  });
+
+  emitToTerminal(current.terminalId, remoteSocketEvents.sessionEnd, { sessaoId: current.id });
+  emitToSession(current.id, remoteSocketEvents.sessionEnd, { sessaoId: current.id });
+  emitToSession(current.id, remoteSocketEvents.sessionState, {
+    sessaoId: current.id,
+    status: SessaoRemotaStatus.ENCERRADA,
   });
 
   return NextResponse.json(sessao);

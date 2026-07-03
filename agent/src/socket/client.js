@@ -15,7 +15,7 @@ export function createSocket(token) {
   });
 
   socket.on("connect", () => {
-    socket.emit(events.terminalRegister, { token });
+    socket.emit(events.terminalRegister, { token, hostname: config.hostname, port: config.port, protocol: config.protocol});
   });
 
   socket.on(events.sessionCreate, async (payload) => {
