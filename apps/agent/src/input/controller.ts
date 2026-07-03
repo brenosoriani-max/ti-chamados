@@ -1,36 +1,149 @@
-import robot from "robotjs";
-import type { MouseClickPayload, MouseMovePayload, MouseScrollPayload, KeyboardKeyPayload } from "../../../../packages/shared/src/types/input";
+import {
+  mouse,
+  keyboard,
+  Button,
+  Key,
+  Point,
+} from "@nut-tree-fork/nut-js";
+import { KeyboardKeyPayload, MouseClickPayload, MouseMovePayload, MouseScrollPayload } from "../types/input";
 
-function modifiers(payload: KeyboardKeyPayload) {
-  const mods: string[] = [];
-  if (payload.ctrlKey) mods.push("control");
-  if (payload.altKey) mods.push("alt");
-  if (payload.shiftKey) mods.push("shift");
-  if (payload.metaKey) mods.push("command");
-  return mods;
+
+
+function mapButton(button: string): Button {
+  switch (button) {
+    case "right":
+      return Button.RIGHT;
+
+    case "middle":
+      return Button.MIDDLE;
+
+    default:
+      return Button.LEFT;
+  }
 }
 
-function mapKey(key: string, code: string) {
-  if (code.startsWith("Key")) return code.replace("Key", "").toLowerCase();
-  return key.length === 1 ? key.toLowerCase() : key.toLowerCase();
+function mapKey(payload: KeyboardKeyPayload): Key | string {
+  const { key, code } = payload;
+
+  if (code.startsWith("Key")) {
+    return code.replace("Key", "").toLowerCase();
+  }
+
+  if (key.length === 1) {
+    return key.toLowerCase();
+  }
+
+  switch (key) {
+    case "Enter":
+      return Key.Enter;
+
+    case "Escape":
+      return Key.Escape;
+
+    case "Backspace":
+      return Key.Backspace;
+
+    case "Tab":
+      return Key.Tab;
+
+    case "Delete":
+      return Key.Delete;
+
+    case "ArrowUp":
+      return Key.Up;
+
+    case "ArrowDown":
+      return Key.Down;
+
+    case "ArrowLeft":
+      return Key.Left;
+
+    case "ArrowRight":
+      return Key.Right;
+
+    case "Shift":
+      return Key.LeftShift;
+
+    case "Control":
+      return Key.LeftControl;
+
+    case "Alt":
+      return Key.LeftAlt;
+
+    default:
+      return key.toLowerCase();
+  }
 }
 
-export function handleMouseMove(payload: MouseMovePayload) {
-  robot.moveMouse(Math.round(payload.x), Math.round(payload.y));
+export async function handleMouseMove(
+  payload: MouseMovePayload
+) {
+  await mouse.setPosition(
+    new Point(
+      Math.round(payload.x),
+      Math.round(payload.y)
+    )
+  );
 }
 
-export function handleMouseClick(payload: MouseClickPayload) {
-  robot.moveMouse(Math.round(payload.x), Math.round(payload.y));
-  const button = payload.button === "right" ? "right" : payload.button === "middle" ? "middle" : "left";
-  robot.mouseClick(button, !!payload.double);
+export async function handleMouseClick(
+  payload: MouseClickPayload
+) {
+  await mouse.setPosition(
+    new Point(
+      Math.round(payload.x),
+      Math.round(payload.y)
+    )
+  );
+
+  const button = mapButton(payload.button);
+
+  if (payload.double) {
+    await mouse.doubleClick(button);
+  } else {
+    await mouse.click(button);
+  }
 }
 
-export function handleMouseScroll(payload: MouseScrollPayload) {
-  robot.scrollMouse(payload.deltaX, payload.deltaY);
+export async function handleMouseScroll(
+  payload: MouseScrollPayload
+) {
+  await mouse.scrollDown(payload.deltaY);
 }
 
-export function handleKeyboardKey(payload: KeyboardKeyPayload, type: "down" | "up") {
-  const key = mapKey(payload.key, payload.code);
-  const mods = modifiers(payload);
-  robot.keyToggle(key, type, mods);
+export async function handleKeyboardKey(
+  payload: KeyboardKeyPayload,
+  type: "down" | "up"
+) {
+  const key = mapKey(payload);
+
+  if (payload.ctrlKey) {
+    await keyboard.pressKey(Key.LeftControl);
+  }
+
+  if (payload.shiftKey) {
+    await keyboard.pressKey(Key.LeftShift);
+  }
+
+  if (payload.altKey) {
+    await keyboard.pressKey(Key.LeftAlt);
+  }
+
+  if (type === "down") {
+    await keyboard.pressKey(key as Key);
+  } else {
+    await keyboard.releaseKey(key as Key);
+  }
+
+  if (payload.altKey) {
+    await keyboard.releaseKey(Key.LeftAlt);
+  }
+
+  if (payload.shiftKey) {
+    await keyboard.releaseKey(Key.LeftShift);
+  }
+
+  if (payload.ctrlKey) {
+    await keyboard.releaseKey(Key.LeftControl);
+  }
 }
