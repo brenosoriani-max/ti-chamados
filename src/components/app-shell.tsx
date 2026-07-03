@@ -10,7 +10,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-background text-foreground">
       <Sidebar user={user} />
 
-      <div className="lg:pl-72 min-h-screen flex flex-col">
+      <div className="lg:pl-50 min-h-screen flex flex-col">
         <header className="sticky top-0 z-30 hidden lg:flex h-16 items-center justify-between gap-8 bg-background border-b border-border/50 px-8">
           <form action="/tickets" method="GET" className="relative max-w-xl flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
@@ -32,7 +32,11 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           </div>
         </header>
-        <main className="flex-1 p-6 lg:p-10">{children}</main>
+        <main className="flex-1 p-6 lg:p-10">
+          <div className="max-w-7xl mx-auto w-full">
+            {children}
+          </div>
+        </main>
       </div>
     </div>
   );
