@@ -75,8 +75,9 @@ export async function SupportQueueContainer() {
       }),
     ]);
 
-  const tickets = activeTickets.map(mapTicketListItem);
-  const archived = archivedTickets.map(mapTicketListItem);
+    const tickets = activeTickets.map(mapTicketListItem);
+    const archived = archivedTickets.map(mapTicketListItem);
+    const plainTechList = techList.map((t) => ({ id: t.id, name: t.name }));
 
   return (
     <div className="space-y-12">
@@ -98,7 +99,7 @@ export async function SupportQueueContainer() {
 
       <div className="space-y-6">
         <h2 className="text-xl font-bold">Quadro de Status</h2>
-        <KanbanBoard initialTickets={tickets} techList={techList} />
+        <KanbanBoard initialTickets={tickets} techList={plainTechList} />
       </div>
 
       <div className="mt-12 border-t border-border/20 pt-10">
