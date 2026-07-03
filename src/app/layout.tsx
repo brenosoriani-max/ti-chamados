@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { Toaster } from "sonner";
 import "./globals.css";
+import { ThemeProvider } from "next-themes";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -12,11 +13,13 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="pt-BR" className="dark" style={{ colorScheme: 'dark' }}>
+    <html lang="pt-BR" suppressHydrationWarning>
+
       <body className={`${inter.className} selection:bg-primary/20`}>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
         {children}
         <Toaster position="top-right" expand={false} richColors closeButton />
-        
+        </ThemeProvider>
       </body>
     </html>
   );

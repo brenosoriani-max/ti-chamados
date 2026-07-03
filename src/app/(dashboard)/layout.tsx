@@ -3,6 +3,7 @@ import { Sidebar } from "@/components/sidebar";
 import { Bell, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { redirect } from "next/navigation";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default async function DashboardLayoutWrapper({
   children,
@@ -13,6 +14,9 @@ export default async function DashboardLayoutWrapper({
   if (!user) {
     redirect("/login");
   }
+
+
+ 
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -29,10 +33,7 @@ export default async function DashboardLayoutWrapper({
           </div>
           
           <div className="flex items-center gap-2 md:gap-4">
-            <button className="p-2 rounded-xl border border-border/40 hover:bg-muted transition-all text-muted-foreground relative">
-              <Bell className="h-4.5 w-4.5" />
-              <span className="absolute top-2 right-2 h-2 w-2 bg-primary rounded-full border-2 border-background"></span>
-            </button>
+            <ThemeToggle />
             
             <div className="h-8 w-[1px] bg-border/50 mx-2 hidden md:block" />
             
