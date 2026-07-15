@@ -5,6 +5,7 @@ import { initializeDatabase, getRepository } from "@/lib/database";
 import { requireSession } from "@/lib/auth";
 import { equipmentCreateSchema } from "@/lib/validators";
 import { Equipment } from "@/entities/Equipment";
+import { messages } from "@/lib/messages";
 
 export async function GET(_request: NextRequest) {
   await requireSession();
@@ -27,7 +28,7 @@ export async function POST(request: NextRequest) {
 
   if (!parsed.success) {
     return NextResponse.json(
-      { error: "Dados de equipamento inválidos" },
+      { error: messages.equipment.invalidData },
       { status: 400 }
     );
   }

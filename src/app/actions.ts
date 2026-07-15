@@ -14,7 +14,9 @@ import { TicketHistory } from "@/entities/TicketHistory";
 import { Role, TicketStatus, HistoryAction } from "@/types";
 import { ticketCreateSchema } from "@/lib/validators";
 import { getDueDates, nextTicketNumber } from "@/lib/tickets";
-import { toast } from "sonner";
+import { ensureUserTerminal } from "@/lib/remote/services/terminal-service";
+import { emitTerminalUpdated } from "@/lib/remote/socket-bridge";
+import { messages } from "@/lib/messages";
 
 export async function registerAction(formData: FormData) {
   await initializeDatabase();
@@ -24,7 +26,8 @@ export async function registerAction(formData: FormData) {
   const password = String(formData.get("password"));
 
   const headersList = await headers();
-  const ip = headersList.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1";
+  const ip = headersList.get("x-forwarded-for")?.split(",")[0]?.trim() || "127.0.0.1";
+  const userAgent = headersList.get("user-agent");
 
   const salt = bcrypt.genSaltSync(10);
   const hashedPassword = bcrypt.hashSync(password, salt);
@@ -50,6 +53,26 @@ export async function registerAction(formData: FormData) {
     equipment.responsibleUserId = user.id;
     await equipmentRepository.save(equipment);
   }
+
+  const { terminal } = await ensureUserTerminal({
+    userId: user.id,
+    userName: user.name,
+    email: user.email,
+    ip,
+    userAgent,
+  });
+
+  emitTerminalUpdated({
+    id: terminal.id,
+    nome: terminal.nome,
+    status: terminal.status,
+    ultimaConexao: terminal.ultimaConexao?.toISOString(),
+    ip: terminal.ip,
+    usuarioLogado: terminal.usuarioLogado,
+    versaoAgente: terminal.versaoAgente,
+    sistemaOperacional: terminal.sistemaOperacional,
+    hostname: terminal.hostname,
+  });
 
   const token = await createSessionToken({
     id: user.id,
@@ -131,7 +154,7 @@ export async function createUserAction(formData: FormData) {
 
   const session = await getSession();
   if (!session || session.role !== Role.ADMIN) {
-    return { success: false, message: "Sem permissão" };
+    return { success: false, message: messages.users.noPermission };
   }
 
   const name = String(formData.get("name"));
@@ -153,15 +176,23 @@ export async function createUserAction(formData: FormData) {
     });
     await userRepository.save(user);
 
+    await ensureUserTerminal({
+      userId: user.id,
+      userName: user.name,
+      email: user.email,
+      online: false,
+    });
+
     revalidatePath("/admin");
     revalidatePath("/admin/usuarios");
+    revalidatePath("/terminais");
 
-    return { success: true, message: "Usuário cadastrado com sucesso" };
+    return { success: true, message: messages.users.createSuccess };
   } catch (error: any) {
     if (error.code === "ER_DUP_ENTRY") {
-      return { success: false, message: "Já existe um usuário com esse e-mail" };
+      return { success: false, message: "Já existe um usuário com este e-mail. Use outro e-mail." };
     }
-    return { success: false, message: "Erro ao cadastrar usuário" };
+    return { success: false, message: messages.users.createError };
   }
 }
 

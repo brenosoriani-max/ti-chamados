@@ -8,6 +8,7 @@ import { getDueDates, nextTicketNumber } from "@/lib/tickets";
 import { Ticket } from "@/entities/Ticket";
 import { TicketHistory } from "@/entities/TicketHistory";
 import { Brackets } from "typeorm";
+import { messages } from "@/lib/messages";
 
 export async function GET(request: NextRequest) {
   try {
@@ -55,7 +56,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ items, total, page, take });
   } catch {
-    return NextResponse.json({ error: "Erro ao listar chamados" }, { status: 500 });
+    return NextResponse.json({ error: messages.tickets.listError }, { status: 500 });
   }
 }
 
@@ -69,7 +70,7 @@ export async function POST(request: NextRequest) {
 
     if (!parsed.success) {
       return NextResponse.json(
-        { error: "Invalid ticket data", details: parsed.error.flatten() },
+        { error: messages.tickets.invalidData, details: parsed.error.flatten() },
         { status: 400 }
       );
     }
@@ -106,6 +107,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(saved, { status: 201 });
   } catch {
-    return NextResponse.json({ error: "Erro ao criar chamado" }, { status: 500 });
+    return NextResponse.json({ error: messages.tickets.createError }, { status: 500 });
   }
 }

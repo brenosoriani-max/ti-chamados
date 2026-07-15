@@ -1,31 +1,187 @@
 import "reflect-metadata";
-import { AppDataSource } from "./data-source";
-import type { EntityTarget, ObjectLiteral, Repository } from "typeorm";
+import { DataSource, type EntityTarget, type ObjectLiteral, type Repository } from "typeorm";
+import { Category } from "@/entities/Category";
+import { Equipment } from "@/entities/Equipment";
+import { KnowledgeArticle } from "@/entities/KnowledgeArticle";
+import { Notification } from "@/entities/Notification";
+import { SessaoRemota } from "@/entities/SessaoRemota";
+import { SLA } from "@/entities/SLA";
+import { SubCategory } from "@/entities/SubCategory";
+import { Terminal } from "@/entities/Terminal";
+import { Ticket } from "@/entities/Ticket";
+import { TicketAttachment } from "@/entities/TicketAttachment";
+import { TicketHistory } from "@/entities/TicketHistory";
+import { TicketMessage } from "@/entities/TicketMessage";
+import { User } from "@/entities/User";
 
-let isInitialized = false;
+const ENTITIES = [
+  Category,
+  Equipment,
+  KnowledgeArticle,
+  Notification,
+  SessaoRemota,
+  SLA,
+  SubCategory,
+  Terminal,
+  Ticket,
+  TicketAttachment,
+  TicketHistory,
+  TicketMessage,
+  User,
+] as const;
 
-export async function initializeDatabase() {
-  if (isInitialized) return AppDataSource;
+type DbGlobal = {
+  dataSource: DataSource | null;
+  initPromise: Promise<DataSource> | null;
+};
 
-  if (!AppDataSource.isInitialized) {
+const g = globalThis as unknown as { __tiChamadosTypeOrm?: DbGlobal };
+
+function state(): DbGlobal {
+  if (!g.__tiChamadosTypeOrm) {
+    g.__tiChamadosTypeOrm = { dataSource: null, initPromise: null };
+  }
+  return g.__tiChamadosTypeOrm;
+}
+
+function createDataSource() {
+  return new DataSource({
+    type: "mysql",
+    host: process.env.DB_HOST || "localhost",
+    port: parseInt(process.env.DB_PORT || "3306", 10),
+    username: process.env.DB_USER || "root",
+    password: process.env.DB_PASSWORD || "",
+    database: process.env.DB_NAME || "ti_chamados",
+    synchronize: false,
+    logging: process.env.NODE_ENV === "development" ? ["error"] : ["error"],
+    entities: [...ENTITIES],
+    subscribers: [],
+    migrations: [],
+  });
+}
+
+export function getDataSource(): DataSource {
+  const s = state();
+  if (!s.dataSource) {
+    s.dataSource = createDataSource();
+  }
+  return s.dataSource;
+}
+
+export async function initializeDatabase(): Promise<DataSource> {
+  const s = state();
+  const ds = getDataSource();
+
+  if (ds.isInitialized) {
+    return ds;
+  }
+
+  if (s.initPromise) {
+    return s.initPromise;
+  }
+
+  s.initPromise = (async () => {
     try {
-      await AppDataSource.initialize();
-      isInitialized = true;
-      console.log("Database connection initialized");
+      await ds.initialize();
+      await ensureTerminalSchema(ds);
+      if (ds.entityMetadatas.length === 0) {
+        throw new Error("TypeORM inicializou sem metadados de entidades.");
+      }
+      console.log(`Banco de dados conectado (${ds.entityMetadatas.length} entidades).`);
+      return ds;
     } catch (error) {
-      console.error("Error initializing database connection:", error);
+      s.initPromise = null;
+      try {
+        if (ds.isInitialized) await ds.destroy();
+      } catch {
+        /* ignore */
+      }
+      s.dataSource = null;
+      console.error("Não foi possível conectar ao banco de dados.", error);
       throw error;
+    }
+  })();
+
+  return s.initPromise;
+}
+
+async function ensureTerminalSchema(source: DataSource) {
+  const qr = source.createQueryRunner();
+  try {
+    await qr.connect();
+    const tables: Array<{ [k: string]: string }> = await qr.query("SHOW TABLES LIKE 'terminals'");
+    if (!tables.length) return;
+
+    const columns: Array<{ Field: string; Type: string }> = await qr.query("SHOW COLUMNS FROM terminals");
+    const byName = new Map(columns.map((c) => [c.Field, c.Type.toLowerCase()]));
+
+    if (!byName.has("userId")) {
+      await qr.query("ALTER TABLE terminals ADD COLUMN userId VARCHAR(36) NULL");
+      try {
+        await qr.query("CREATE INDEX IDX_terminals_userId ON terminals (userId)");
+      } catch {
+        /* index may exist */
+      }
+    }
+
+    if (!byName.has("equipmentUuid")) {
+      await qr.query("ALTER TABLE terminals ADD COLUMN equipmentUuid VARCHAR(191) NULL");
+    } else if (!byName.get("equipmentUuid")!.includes("191")) {
+      await qr.query("ALTER TABLE terminals MODIFY equipmentUuid VARCHAR(191) NULL");
+    }
+
+    for (const col of [
+      ["hostname", "VARCHAR(255) NULL"],
+      ["windowsVersion", "VARCHAR(100) NULL"],
+      ["arquitetura", "VARCHAR(50) NULL"],
+      ["memoriaRamGb", "INT NULL"],
+      ["processador", "VARCHAR(255) NULL"],
+      ["usuarioLogado", "VARCHAR(255) NULL"],
+      ["resolucaoTela", "VARCHAR(50) NULL"],
+      ["quantidadeMonitores", "INT NULL"],
+    ] as const) {
+      if (!byName.has(col[0])) {
+        await qr.query(`ALTER TABLE terminals ADD COLUMN ${col[0]} ${col[1]}`);
+      }
+    }
+  } catch (error) {
+    console.warn(
+      "Ajuste de schema de terminals ignorado:",
+      error instanceof Error ? error.message : error
+    );
+  } finally {
+    await qr.release();
+  }
+}
+
+/**
+ * Resolve o repositório pelo nome da entidade para evitar
+ * EntityMetadataNotFoundError com classes duplicadas no bundle do Next.js.
+ */
+export function getRepository<T extends ObjectLiteral>(entity: EntityTarget<T>): Repository<T> {
+  const ds = getDataSource();
+  if (!ds.isInitialized) {
+    throw new Error("Banco de dados ainda não está pronto. Tente novamente.");
+  }
+
+  if (typeof entity === "function") {
+    const name = (entity as Function).name;
+    const meta = ds.entityMetadatas.find(
+      (m) => m.target === entity || m.name === name || (typeof m.target === "function" && m.target.name === name)
+    );
+    if (meta) {
+      return ds.getRepository(meta.target as EntityTarget<T>);
     }
   }
 
-  return AppDataSource;
+  return ds.getRepository(entity);
 }
 
-export function getRepository<T extends ObjectLiteral>(entity: EntityTarget<T>): Repository<T> {
-  if (!AppDataSource.isInitialized) {
-    throw new Error("Database not initialized. Call initializeDatabase() first.");
-  }
-  return AppDataSource.getRepository(entity);
-}
-
-export { AppDataSource };
+/** Sempre aponta para a instância viva do singleton (globalThis). */
+export const AppDataSource = new Proxy({} as DataSource, {
+  get(_target, prop, receiver) {
+    const ds = getDataSource();
+    const value = Reflect.get(ds as object, prop, receiver);
+    return typeof value === "function" ? (value as Function).bind(ds) : value;
+  },
+});

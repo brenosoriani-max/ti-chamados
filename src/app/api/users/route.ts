@@ -6,11 +6,8 @@ import { initializeDatabase, getRepository } from "@/lib/database";
 import { User } from "@/entities/User";
 import { requireSession } from "@/lib/auth";
 import { userCreateSchema } from "@/lib/validators";
+import { messages } from "@/lib/messages";
 
-/**
- * GET /api/users
- * List all users (ADMIN only)
- */
 export async function GET() {
   try {
     await requireSession([Role.ADMIN]);
@@ -31,18 +28,11 @@ export async function GET() {
       .getMany();
 
     return NextResponse.json(users);
-  } catch (error) {
-    return NextResponse.json(
-      { error: "Erro ao listar usuários" },
-      { status: 500 }
-    );
+  } catch {
+    return NextResponse.json({ error: messages.users.listError }, { status: 500 });
   }
 }
 
-/**
- * POST /api/users
- * Create a new user (ADMIN only)
- */
 export async function POST(request: NextRequest) {
   try {
     await requireSession([Role.ADMIN]);
@@ -53,7 +43,7 @@ export async function POST(request: NextRequest) {
 
     if (!parsed.success) {
       return NextResponse.json(
-        { error: "Invalid user data", details: parsed.error.flatten() },
+        { error: messages.users.invalidData, details: parsed.error.flatten() },
         { status: 400 }
       );
     }
@@ -66,7 +56,7 @@ export async function POST(request: NextRequest) {
       role: parsed.data.role,
       passwordHash,
     });
-    
+
     await userRepository.save(user);
 
     return NextResponse.json(
@@ -78,11 +68,8 @@ export async function POST(request: NextRequest) {
       },
       { status: 201 }
     );
-  } catch (error) {
-    return NextResponse.json(
-      { error: "Erro ao criar usuário" },
-      { status: 500 }
-    );
+  } catch {
+    return NextResponse.json({ error: messages.users.createError }, { status: 500 });
   }
 }
 
@@ -91,35 +78,23 @@ export async function DELETE(request: NextRequest) {
     await requireSession([Role.ADMIN]);
     await initializeDatabase();
     const userRepository = getRepository(User);
-    const { searchParams } = new URL(request.url); 
+    const { searchParams } = new URL(request.url);
 
     const id = searchParams.get("id");
     if (!id) {
-      return NextResponse.json(
-        { error: "User ID is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: messages.users.idRequired }, { status: 400 });
     }
     const user = await userRepository.findOne({ where: { id } });
     if (!user) {
-      return NextResponse.json(
-        { error: "User not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: messages.users.notFound }, { status: 404 });
     }
 
     await userRepository.remove(user);
-    return NextResponse.json({ message: "User deleted successfully" });
-  } catch (error:any) {
-    if(error.code ==='ERR_ROW_IS_REFERENCED_2') {
-      return NextResponse.json(
-        { error: "Não é possível excluir este usuário, pois ele está associado a registros existentes." },
-        { status: 400 } 
-      );
-    } 
-    return NextResponse.json(
-      { error: "Erro ao deletar usuário" },
-      { status: 500 }
-    );
+    return NextResponse.json({ message: "Usuário removido com sucesso." });
+  } catch (error: any) {
+    if (error.code === "ERR_ROW_IS_REFERENCED_2") {
+      return NextResponse.json({ error: messages.users.deleteLinked }, { status: 400 });
+    }
+    return NextResponse.json({ error: messages.users.deleteError }, { status: 500 });
   }
 }

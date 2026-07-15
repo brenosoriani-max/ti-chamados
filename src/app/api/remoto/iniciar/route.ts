@@ -7,8 +7,9 @@ import { remoteStartSchema } from "@/lib/validators";
 import { Terminal } from "@/entities/Terminal";
 import { SessaoRemota } from "@/entities/SessaoRemota";
 import { appendRemoteLog } from "@/lib/remote-logs";
-import { emitToSession, mapSessionTerminal } from "@/lib/remote/socket-bridge";
+import { emitToTerminal, emitToSession, mapSessionTerminal } from "@/lib/remote/socket-bridge";
 import { remoteSocketEvents } from "@/lib/remote/events";
+import { messages } from "@/lib/messages";
 
 export async function POST(request: NextRequest) {
   const usuario = await requireSession([Role.TECNICO, Role.ADMIN]);
@@ -17,7 +18,7 @@ export async function POST(request: NextRequest) {
   const parsed = remoteStartSchema.safeParse(await request.json());
   if (!parsed.success) {
     return NextResponse.json(
-      { error: "Dados da sessao invalidos", details: parsed.error.flatten() },
+      { error: messages.terminais.sessionInvalid, details: parsed.error.flatten() },
       { status: 400 }
     );
   }
@@ -26,11 +27,11 @@ export async function POST(request: NextRequest) {
   const terminal = await terminalRepository.findOne({ where: { id: parsed.data.terminalId } });
 
   if (!terminal) {
-    return NextResponse.json({ error: "Terminal nao encontrado" }, { status: 404 });
+    return NextResponse.json({ error: messages.terminais.notFound }, { status: 404 });
   }
 
   if (terminal.status !== "ONLINE") {
-    return NextResponse.json({ error: "Terminal offline" }, { status: 409 });
+    return NextResponse.json({ error: messages.terminais.offline }, { status: 409 });
   }
 
   const sessaoRepository = getRepository(SessaoRemota);
@@ -52,6 +53,12 @@ export async function POST(request: NextRequest) {
   });
 
   mapSessionTerminal(sessao.id, terminal.id);
+  emitToTerminal(terminal.id, remoteSocketEvents.sessionCreate, {
+    sessaoId: sessao.id,
+    terminalId: terminal.id,
+    usuarioId: usuario.id,
+    usuarioNome: usuario.name,
+  });
   emitToSession(sessao.id, remoteSocketEvents.sessionState, {
     sessaoId: sessao.id,
     status: SessaoRemotaStatus.AGUARDANDO,

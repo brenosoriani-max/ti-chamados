@@ -7,6 +7,7 @@ import { messageCreateSchema } from "@/lib/validators";
 import { Ticket } from "@/entities/Ticket";
 import { TicketMessage } from "@/entities/TicketMessage";
 import { TicketHistory } from "@/entities/TicketHistory";
+import { messages } from "@/lib/messages";
 
 export async function POST(
   request: NextRequest,
@@ -22,13 +23,13 @@ export async function POST(
 
     if (!parsed.success) {
       return NextResponse.json(
-        { error: "Invalid message data", details: parsed.error.flatten() },
+        { error: messages.tickets.invalidComment, details: parsed.error.flatten() },
         { status: 400 }
       );
     }
 
     if (parsed.data.isInternal && session.role === Role.CLIENTE) {
-      return NextResponse.json({ error: "Comentário interno restrito" }, { status: 403 });
+      return NextResponse.json({ error: messages.tickets.commentForbidden }, { status: 403 });
     }
 
     const ticketRepository = getRepository(Ticket);
@@ -40,7 +41,7 @@ export async function POST(
     });
 
     if (!ticket) {
-      return NextResponse.json({ error: "Chamado não encontrado" }, { status: 404 });
+      return NextResponse.json({ error: messages.tickets.notFound }, { status: 404 });
     }
 
     const messageRepository = getRepository(TicketMessage);
@@ -72,6 +73,6 @@ export async function POST(
 
     return NextResponse.json(saved, { status: 201 });
   } catch {
-    return NextResponse.json({ error: "Erro ao comentar" }, { status: 500 });
+    return NextResponse.json({ error: messages.tickets.commentError }, { status: 500 });
   }
 }

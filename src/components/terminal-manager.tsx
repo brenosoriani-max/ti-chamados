@@ -1,15 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { Cpu, HardDrive, Monitor, PlugZap, RefreshCw, Search, ShieldPlus, User } from "lucide-react";
+import { Cpu, HardDrive, Monitor, PlugZap, RefreshCw, Search, ShieldPlus, Trash2, User } from "lucide-react";
 import { io, type Socket } from "socket.io-client";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { TerminalStatusBadge } from "@/components/terminal-status-badge";
 import { formatDateTime } from "@/lib/utils";
 import { remoteSocketEvents } from "@/lib/remote/events";
+import { messages } from "@/lib/messages";
 
 type TerminalItem = {
   id: string;
@@ -34,6 +36,8 @@ export function TerminalManager({ initialTerminais }: { initialTerminais: Termin
   const [terminais, setTerminais] = useState(initialTerminais);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
 
   const filtered = useMemo(() => {
     const value = query.trim().toLowerCase();
@@ -56,6 +60,30 @@ export function TerminalManager({ initialTerminais }: { initialTerminais: Termin
     }
   }
 
+  function handleDelete(terminal: TerminalItem) {
+    const confirmed = window.confirm(
+      `${messages.terminais.deleteConfirm}\n\n${terminal.nome}\n${terminal.hostname ?? terminal.identificador}`
+    );
+    if (!confirmed) return;
+
+    setDeletingId(terminal.id);
+    startTransition(async () => {
+      try {
+        const response = await fetch(`/api/terminais/${terminal.id}`, { method: "DELETE" });
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || messages.terminais.deleteError);
+        }
+        setTerminais((prev) => prev.filter((item) => item.id !== terminal.id));
+        toast.success(data.message || messages.terminais.deleteSuccess);
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : messages.terminais.deleteError);
+      } finally {
+        setDeletingId(null);
+      }
+    });
+  }
+
   useEffect(() => {
     let socket: Socket | null = null;
     (async () => {
@@ -63,17 +91,24 @@ export function TerminalManager({ initialTerminais }: { initialTerminais: Termin
       if (!response.ok) return;
       const { token } = await response.json();
       socket = io({ auth: { sessionToken: token, role: "technician" } });
-      socket.on(remoteSocketEvents.terminalUpdated, (payload: Partial<TerminalItem> & { id: string }) => {
+      socket.on(remoteSocketEvents.terminalUpdated, (payload: Partial<TerminalItem> & { id: string; deleted?: boolean }) => {
+        if (payload.deleted) {
+          setTerminais((prev) => prev.filter((t) => t.id !== payload.id));
+          return;
+        }
         setTerminais((prev) => {
           const index = prev.findIndex((t) => t.id === payload.id);
           if (index === -1) {
-            refresh();
+            void refresh();
             return prev;
           }
           const next = [...prev];
           next[index] = { ...next[index], ...payload };
           return next;
         });
+      });
+      socket.on("connect", () => {
+        void refresh();
       });
     })();
     const id = window.setInterval(refresh, 30_000);
@@ -98,6 +133,7 @@ export function TerminalManager({ initialTerminais }: { initialTerminais: Termin
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {filtered.map((terminal) => {
           const activeUser = terminal.sessoesRemotas?.[0]?.usuario?.name;
+          const isDeleting = deletingId === terminal.id && isPending;
           return (
             <Card key={terminal.id} className="border border-border/40 shadow-sm">
               <CardContent className="space-y-5 p-5">
@@ -109,7 +145,19 @@ export function TerminalManager({ initialTerminais }: { initialTerminais: Termin
                     </div>
                     <p className="truncate text-[11px] font-medium text-muted-foreground">{terminal.hostname ?? terminal.identificador}</p>
                   </div>
-                  <TerminalStatusBadge status={terminal.status} />
+                  <div className="flex items-center gap-2">
+                    <TerminalStatusBadge status={terminal.status} />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-red-500 hover:bg-red-500/10"
+                      title="Excluir terminal"
+                      disabled={isDeleting}
+                      onClick={() => handleDelete(terminal)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 text-xs">
@@ -141,7 +189,7 @@ export function TerminalManager({ initialTerminais }: { initialTerminais: Termin
         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border p-12 text-center">
           <ShieldPlus className="mb-3 h-8 w-8 text-muted-foreground" />
           <p className="text-sm font-bold">Nenhum terminal encontrado</p>
-          <p className="mt-1 text-xs text-muted-foreground">Instale o agente Electron para cadastro automatico.</p>
+          <p className="mt-1 text-xs text-muted-foreground">Instale o agente Electron ou faça login para cadastro automático.</p>
         </div>
       )}
     </div>

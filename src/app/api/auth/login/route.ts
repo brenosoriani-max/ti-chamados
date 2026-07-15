@@ -6,6 +6,9 @@ import { User } from "@/entities/User";
 import { createSessionToken, setAuthCookie } from "@/lib/auth";
 import { loginSchema } from "@/lib/validators";
 import { Role } from "@/types";
+import { ensureUserTerminal } from "@/lib/remote/services/terminal-service";
+import { emitTerminalUpdated } from "@/lib/remote/socket-bridge";
+import { messages } from "@/lib/messages";
 
 export async function POST(request: NextRequest) {
   await initializeDatabase();
@@ -19,7 +22,7 @@ export async function POST(request: NextRequest) {
   const parsed = loginSchema.safeParse(body);
 
   if (!parsed.success) {
-    return NextResponse.json({ error: "Dados de login inválidos" }, { status: 400 });
+    return NextResponse.json({ error: messages.auth.invalidData }, { status: 400 });
   }
 
   const userRepository = getRepository(User);
@@ -29,7 +32,7 @@ export async function POST(request: NextRequest) {
 
   if (!user || !user.isActive) {
     return NextResponse.json(
-      { error: "Credenciais inválidas" },
+      { error: user && !user.isActive ? messages.auth.inactiveUser : messages.auth.invalidLogin },
       { status: 401 }
     );
   }
@@ -41,7 +44,7 @@ export async function POST(request: NextRequest) {
 
   if (!passwordMatch) {
     return NextResponse.json(
-      { error: "Credenciais inválidas" },
+      { error: messages.auth.invalidLogin },
       { status: 401 }
     );
   }
@@ -54,10 +57,31 @@ export async function POST(request: NextRequest) {
   });
 
   const forwarded = request.headers.get("x-forwarded-for");
-  const ip = forwarded ? forwarded.split(",")[0] : request.nextUrl.hostname;
+  const ip = (forwarded ? forwarded.split(",")[0] : request.headers.get("x-real-ip"))?.trim()
+    || request.nextUrl.hostname;
 
   user.lastIp = ip;
   await userRepository.save(user);
+
+  const { terminal } = await ensureUserTerminal({
+    userId: user.id,
+    userName: user.name,
+    email: user.email,
+    ip,
+    userAgent: request.headers.get("user-agent"),
+  });
+
+  emitTerminalUpdated({
+    id: terminal.id,
+    nome: terminal.nome,
+    status: terminal.status,
+    ultimaConexao: terminal.ultimaConexao?.toISOString(),
+    ip: terminal.ip,
+    usuarioLogado: terminal.usuarioLogado,
+    versaoAgente: terminal.versaoAgente,
+    sistemaOperacional: terminal.sistemaOperacional,
+    hostname: terminal.hostname,
+  });
 
   await setAuthCookie(token);
 

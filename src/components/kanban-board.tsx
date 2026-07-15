@@ -31,6 +31,7 @@ import { TicketAssignSelect } from "@/components/ticket-assign-select";
 import { formatTicketStatus, hoursUntil, cn } from "@/lib/utils";
 import { updateTicketStatusAction, archiveTicketAction } from "@/app/actions";
 import { toast } from "sonner";
+import { messages } from "@/lib/messages";
 
 interface KanbanBoardProps {
   initialTickets: any[];
@@ -277,9 +278,9 @@ export function KanbanBoard({ initialTickets, techList }: KanbanBoardProps) {
       startTransition(async () => {
         try {
           await updateTicketStatusAction(ticketId, newStatus);
-          toast.success(`Status atualizado para ${formatTicketStatus(newStatus)}`);
+          toast.success(messages.tickets.statusUpdated(formatTicketStatus(newStatus)));
         } catch (error) {
-          toast.error("Erro ao atualizar status");
+          toast.error(messages.tickets.statusUpdateError);
         }
       });
     }
@@ -290,9 +291,9 @@ export function KanbanBoard({ initialTickets, techList }: KanbanBoardProps) {
       try {
         await archiveTicketAction(ticketId, true);
         setTickets((prev) => prev.filter((ticket) => ticket.id !== ticketId));
-        toast.info("Chamado arquivado com sucesso");
+        toast.info(messages.tickets.archiveSuccess);
       } catch (error) {
-        toast.error("Erro ao arquivar chamado");
+        toast.error(messages.tickets.archiveError);
       }
     });
   }, []);

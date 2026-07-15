@@ -42,21 +42,17 @@ export function getSessionTerminalId(sessaoId: string) {
 }
 
 export function emitToTerminal(terminalId: string, event: string, payload: unknown) {
-  if (!bridge.ioInstance) {
-    console.warn(`[remote] ioInstance ainda não setado — evento "${event}" para terminal ${terminalId} não foi enviado`);
-    return;
-  }
+  if (!bridge.ioInstance) return;
   bridge.ioInstance.to(`terminal:${terminalId}`).emit(event, payload);
 }
 
 export function emitToSession(sessaoId: string, event: string, payload: unknown) {
-  if (!bridge.ioInstance) {
-    console.warn(`[remote] ioInstance ainda não setado — evento "${event}" para sessão ${sessaoId} não foi enviado`);
-    return;
-  }
+  if (!bridge.ioInstance) return;
   bridge.ioInstance.to(`sessao:${sessaoId}`).emit(event, payload);
 }
 
 export function emitTerminalUpdated(payload: unknown) {
-  bridge.ioInstance?.to("technicians").emit("terminal:updated", payload);
+  if (!bridge.ioInstance) return;
+  bridge.ioInstance.to("technicians").emit("terminal:updated", payload);
+  bridge.ioInstance.emit("terminal:updated", payload);
 }

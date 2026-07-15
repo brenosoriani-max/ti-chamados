@@ -4,6 +4,7 @@ import { Role, TicketStatus } from "@/types";
 import { initializeDatabase, getRepository } from "@/lib/database";
 import { requireSession } from "@/lib/auth";
 import { Ticket } from "@/entities/Ticket";
+import { messages } from "@/lib/messages";
 
 export async function GET() {
   try {
@@ -50,6 +51,6 @@ export async function GET() {
       ratingAverage: 0,
     });
   } catch {
-    return NextResponse.json({ error: "Erro ao gerar relatório" }, { status: 500 });
+    return NextResponse.json({ error: messages.reports.error }, { status: 500 });
   }
 }

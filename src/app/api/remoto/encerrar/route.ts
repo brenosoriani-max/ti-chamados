@@ -8,6 +8,7 @@ import { SessaoRemota } from "@/entities/SessaoRemota";
 import { appendRemoteLog } from "@/lib/remote-logs";
 import { emitToTerminal, emitToSession } from "@/lib/remote/socket-bridge";
 import { remoteSocketEvents } from "@/lib/remote/events";
+import { messages } from "@/lib/messages";
 
 export async function POST(request: NextRequest) {
   const usuario = await requireSession([Role.TECNICO, Role.ADMIN]);
@@ -16,7 +17,7 @@ export async function POST(request: NextRequest) {
   const parsed = remoteEndSchema.safeParse(await request.json());
   if (!parsed.success) {
     return NextResponse.json(
-      { error: "Dados da sessao invalidos", details: parsed.error.flatten() },
+      { error: messages.terminais.sessionInvalid, details: parsed.error.flatten() },
       { status: 400 }
     );
   }
@@ -25,11 +26,11 @@ export async function POST(request: NextRequest) {
   const current = await sessaoRepository.findOne({ where: { id: parsed.data.sessaoId } });
 
   if (!current) {
-    return NextResponse.json({ error: "Sessao nao encontrada" }, { status: 404 });
+    return NextResponse.json({ error: messages.terminais.sessionNotFound }, { status: 404 });
   }
 
   if (usuario.role !== Role.ADMIN && current.usuarioId !== usuario.id) {
-    return NextResponse.json({ error: "Sem permissao" }, { status: 403 });
+    return NextResponse.json({ error: messages.terminais.sessionForbidden }, { status: 403 });
   }
 
   current.status = SessaoRemotaStatus.ENCERRADA;

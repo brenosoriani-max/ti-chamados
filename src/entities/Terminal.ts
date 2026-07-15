@@ -53,7 +53,7 @@ export class Terminal {
   @Column({ type: "varchar", length: 50, nullable: true })
   versaoAgente?: string;
 
-  @Column({ type: "varchar", length: 36, unique: true, nullable: true })
+  @Column({ type: "varchar", length: 191, nullable: true })
   equipmentUuid?: string;
 
   @Column({ type: "varchar", length: 255, nullable: true })
@@ -79,6 +79,10 @@ export class Terminal {
 
   @Column({ type: "int", nullable: true })
   quantidadeMonitores?: number;
+
+  @Index()
+  @Column({ type: "varchar", length: 36, nullable: true })
+  userId?: string;
 
   @OneToMany(() => SessaoRemota, (sessao) => sessao.terminal)
   sessoesRemotas!: Relation<SessaoRemota>[];

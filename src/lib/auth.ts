@@ -5,6 +5,7 @@ import { SignJWT, jwtVerify } from "jose";
 import { getRepository, initializeDatabase } from "@/lib/database";
 import { User } from "@/entities/User";
 import { Role } from "@/types";
+import { messages } from "@/lib/messages";
 
 const cookieName = "ti_chamados_token";
 
@@ -64,9 +65,9 @@ export const getSession = cache(async (): Promise<SessionUser | null> => {
 
 export async function requireSession(roles?: Role[]) {
   const session = await getSession();
-  if (!session) throw new Response("Nao autenticado", { status: 401 });
+  if (!session) throw new Response(messages.auth.unauthenticated, { status: 401 });
   if (roles?.length && !roles.includes(session.role)) {
-    throw new Response("Sem permissao", { status: 403 });
+    throw new Response(messages.auth.forbidden, { status: 403 });
   }
   return session;
 }
@@ -103,7 +104,7 @@ export async function getFreshSessionUser(): Promise<(SessionUser & { isActive: 
       isActive: user.isActive,
     };
   } catch (error) {
-    console.error("Error fetching fresh session user:", error);
+    console.error("Falha ao validar sessão do usuário:", error);
     return null;
   }
 }

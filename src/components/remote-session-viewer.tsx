@@ -6,6 +6,8 @@ import { io, type Socket } from "socket.io-client";
 import { Button } from "@/components/ui/button";
 import { TerminalStatusBadge } from "@/components/terminal-status-badge";
 import { defaultRtcConfiguration, remoteSocketEvents } from "@/lib/remote/events";
+import { messages, sessionStatusLabel, readApiError } from "@/lib/messages";
+import { toast } from "sonner";
 
 type Terminal = {
   id: string;
@@ -24,7 +26,7 @@ export function RemoteSessionViewer({ terminal }: RemoteSessionViewerProps) {
   const peerRef = useRef<RTCPeerConnection | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const [sessaoId, setSessaoId] = useState<string | null>(null);
-  const [status, setStatus] = useState("Pronto");
+  const [status, setStatus] = useState<string>(messages.remote.ready);
   const [zoom, setZoom] = useState(1);
 
   async function ensureSocket() {
@@ -47,7 +49,7 @@ export function RemoteSessionViewer({ terminal }: RemoteSessionViewerProps) {
 
     peer.ontrack = (event) => {
       if (videoRef.current) videoRef.current.srcObject = event.streams[0];
-      setStatus("Ativa");
+      setStatus(messages.remote.active);
       fetch("/api/remoto/sessoes", { method: "GET" }).catch(() => undefined);
     };
 
@@ -99,7 +101,7 @@ export function RemoteSessionViewer({ terminal }: RemoteSessionViewerProps) {
 
     socket.off(remoteSocketEvents.sessionState);
     socket.on(remoteSocketEvents.sessionState, (payload: { sessaoId: string; status: string }) => {
-      if (payload.sessaoId === sessionId) setStatus(payload.status);
+      if (payload.sessaoId === sessionId) setStatus(sessionStatusLabel(payload.status));
     });
 
     socket.off(remoteSocketEvents.sessionEnd);
@@ -110,24 +112,26 @@ export function RemoteSessionViewer({ terminal }: RemoteSessionViewerProps) {
   }
 
   async function startSession() {
-    setStatus("Criando sessao");
+    setStatus(messages.remote.creating);
     const response = await fetch("/api/remoto/iniciar", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ terminalId: terminal.id }),
     });
-    const data = await response.json();
     if (!response.ok) {
-      setStatus(data.error ?? "Falha ao iniciar");
+      const error = await readApiError(response, messages.remote.startFailed);
+      setStatus(error);
+      toast.error(error);
       return;
     }
+    const data = await response.json();
 
     const socket = await ensureSocket();
     const sessionId = data.id as string;
     setSessaoId(sessionId);
     setupPeer(socket, sessionId);
     socket.emit("sessao:join", { sessaoId: sessionId });
-    setStatus("Aguardando agente");
+    setStatus(messages.remote.waitingAgent);
   }
 
   function endSessionLocal() {
@@ -135,7 +139,7 @@ export function RemoteSessionViewer({ terminal }: RemoteSessionViewerProps) {
     peerRef.current = null;
     if (videoRef.current) videoRef.current.srcObject = null;
     setSessaoId(null);
-    setStatus("Encerrada");
+    setStatus(messages.remote.ended);
   }
 
   async function endSession() {
@@ -195,7 +199,9 @@ export function RemoteSessionViewer({ terminal }: RemoteSessionViewerProps) {
             <h1 className="truncate text-sm font-bold">{terminal.nome}</h1>
             <TerminalStatusBadge status={terminal.status} />
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">Sessao: <span className="font-semibold text-foreground">{status}</span></p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Status: <span className="font-semibold text-foreground">{sessionStatusLabel(status)}</span>
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {!sessaoId ? (

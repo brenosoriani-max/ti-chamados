@@ -7,6 +7,7 @@ import { ticketUpdateSchema } from "@/lib/validators";
 import { Ticket } from "@/entities/Ticket";
 import { TicketHistory } from "@/entities/TicketHistory";
 import { TicketMessage } from "@/entities/TicketMessage";
+import { messages } from "@/lib/messages";
 
 export async function GET(
   _request: NextRequest,
@@ -39,7 +40,7 @@ export async function GET(
     });
 
     if (!ticket) {
-      return NextResponse.json({ error: "Chamado não encontrado" }, { status: 404 });
+      return NextResponse.json({ error: messages.tickets.notFound }, { status: 404 });
     }
 
     ticket.messages.sort((a: TicketMessage, b: TicketMessage) => a.createdAt.getTime() - b.createdAt.getTime());
@@ -47,7 +48,7 @@ export async function GET(
 
     return NextResponse.json(ticket);
   } catch {
-    return NextResponse.json({ error: "Erro ao consultar chamado" }, { status: 500 });
+    return NextResponse.json({ error: messages.tickets.getError }, { status: 500 });
   }
 }
 
@@ -65,7 +66,7 @@ export async function PATCH(
 
     if (!parsed.success) {
       return NextResponse.json(
-        { error: "Invalid ticket data", details: parsed.error.flatten() },
+        { error: messages.tickets.invalidData, details: parsed.error.flatten() },
         { status: 400 }
       );
     }
@@ -75,7 +76,7 @@ export async function PATCH(
 
     const current = await ticketRepository.findOne({ where: { id } });
     if (!current) {
-      return NextResponse.json({ error: "Chamado não encontrado" }, { status: 404 });
+      return NextResponse.json({ error: messages.tickets.notFound }, { status: 404 });
     }
 
     const oldStatus = current.status;
@@ -137,6 +138,6 @@ export async function PATCH(
 
     return NextResponse.json(ticket);
   } catch {
-    return NextResponse.json({ error: "Erro ao atualizar chamado" }, { status: 500 });
+    return NextResponse.json({ error: messages.tickets.updateError }, { status: 500 });
   }
 }

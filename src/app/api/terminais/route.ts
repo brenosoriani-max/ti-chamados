@@ -8,6 +8,7 @@ import { terminalCreateSchema } from "@/lib/validators";
 import { Terminal } from "@/entities/Terminal";
 import { SessaoRemota } from "@/entities/SessaoRemota";
 import { Brackets } from "typeorm";
+import { messages } from "@/lib/messages";
 
 export async function GET(request: NextRequest) {
   await requireSession();
@@ -69,7 +70,7 @@ export async function POST(request: NextRequest) {
 
   if (!parsed.success) {
     return NextResponse.json(
-      { error: "Dados do terminal invalidos", details: parsed.error.flatten() },
+      { error: messages.terminais.invalidData, details: parsed.error.flatten() },
       { status: 400 }
     );
   }

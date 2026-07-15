@@ -6,6 +6,7 @@ import { requireSession } from "@/lib/auth";
 import { ratingSchema } from "@/lib/validators";
 import { Ticket } from "@/entities/Ticket";
 import { TicketHistory } from "@/entities/TicketHistory";
+import { messages } from "@/lib/messages";
 
 export async function POST(
   request: NextRequest,
@@ -21,7 +22,7 @@ export async function POST(
 
     if (!parsed.success) {
       return NextResponse.json(
-        { error: "Invalid rating data", details: parsed.error.flatten() },
+        { error: messages.tickets.invalidRating, details: parsed.error.flatten() },
         { status: 400 }
       );
     }
@@ -32,7 +33,7 @@ export async function POST(
     });
 
     if (!ticket) {
-      return NextResponse.json({ error: "Chamado não encontrado" }, { status: 404 });
+      return NextResponse.json({ error: messages.tickets.notFound }, { status: 404 });
     }
 
     const historyRepository = getRepository(TicketHistory);
@@ -51,6 +52,6 @@ export async function POST(
       comment: parsed.data.comment ?? null,
     });
   } catch {
-    return NextResponse.json({ error: "Erro ao avaliar" }, { status: 500 });
+    return NextResponse.json({ error: messages.tickets.ratingError }, { status: 500 });
   }
 }

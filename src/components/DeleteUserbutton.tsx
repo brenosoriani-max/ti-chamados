@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { UserX, AlertTriangle, X } from "lucide-react";
 import { toast } from "sonner";
+import { messages } from "@/lib/messages";
 
 interface DeleteUserButtonProps {
   userId: string;
@@ -27,14 +28,14 @@ export function DeleteUserButton({ userId, userName }: DeleteUserButtonProps) {
         const data = await response.json();
 
         if (!response.ok) {
-          throw new Error(data.error || "Erro ao desativar usuário");
+          throw new Error(data.error || messages.users.deactivateError);
         }
 
-        toast.warning("Usuário desativado com sucesso");
+        toast.success("Usuário removido com sucesso.");
         setIsModalOpen(false);
         router.refresh();
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Erro ao desativar usuário");
+        toast.error(error instanceof Error ? error.message : messages.users.deactivateError);
       }
     });
   };

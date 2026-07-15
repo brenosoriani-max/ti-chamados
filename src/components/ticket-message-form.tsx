@@ -4,6 +4,7 @@ import { Send, Loader2 } from "lucide-react";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { messages } from "@/lib/messages";
 
 interface TicketMessageFormProps {
   ticketId: string;
@@ -26,8 +27,8 @@ export function TicketMessageForm({ ticketId, canSendInternal = false }: TicketM
       setError(null);
       setSuccess(false);
 
-      if (!message.trim()) {3
-        setError("Mensagem não pode estar vazia");
+      if (!message.trim()) {
+        setError(messages.tickets.invalidComment);
         setIsLoading(false);
         return;
       }
@@ -45,7 +46,7 @@ export function TicketMessageForm({ ticketId, canSendInternal = false }: TicketM
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || "Erro ao enviar mensagem");
+        throw new Error(errorData.error || messages.tickets.commentError);
       }
 
       setMessage("");
@@ -57,7 +58,7 @@ export function TicketMessageForm({ ticketId, canSendInternal = false }: TicketM
         window.location.reload();
       }, 1000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro ao enviar mensagem");
+      setError(err instanceof Error ? err.message : messages.tickets.commentError);
     } finally {
       setIsLoading(false);
     }
