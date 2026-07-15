@@ -5,6 +5,9 @@ import { startAgent, stopAgent, getAgentStatus, setStatusChangeListener } from "
 import { getServerUrl, setServerUrl, getTerminalName, setTerminalName, getToken, setToken } from "./storage/store";
 import { SETUP_HTML } from "./agent/setupHtml";
 
+// Must be called before app is ready — prevents GPU conflicts in headless capture windows
+app.disableHardwareAcceleration();
+
 let mainWindow: BrowserWindow | null = null;
 let isQuitting = false;
 
