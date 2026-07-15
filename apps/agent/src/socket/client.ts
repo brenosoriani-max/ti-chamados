@@ -5,7 +5,7 @@ export function createAgentSocket(serverUrl: string, token?: string) {
   return io(serverUrl, {
     auth: { token, role: "agent" },
     transports: ["websocket", "polling"],
-    reconnection: true,
+    reconnection: false,
     reconnectionAttempts: Infinity,
   });
 }

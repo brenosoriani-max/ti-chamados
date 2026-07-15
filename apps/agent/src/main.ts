@@ -66,11 +66,22 @@ if (!gotTheLock) {
       await startAgent();
     });
 
+    
+    ipcMain.handle("agent:stop", async () => {
+    await stopAgent();
+    });
+
+    ipcMain.handle("agent:restart", async () => {
+    await startAgent();
+    });
+
     ipcMain.on("window:hide", () => {
       if (mainWindow) {
         mainWindow.hide();
       }
     });
+
+
 
     ipcMain.handle("desktop:getSources", async () => {
       const sources = await desktopCapturer.getSources({ types: ["screen"], thumbnailSize: { width: 0, height: 0 } });
