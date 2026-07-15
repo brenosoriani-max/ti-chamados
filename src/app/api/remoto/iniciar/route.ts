@@ -7,7 +7,7 @@ import { remoteStartSchema } from "@/lib/validators";
 import { Terminal } from "@/entities/Terminal";
 import { SessaoRemota } from "@/entities/SessaoRemota";
 import { appendRemoteLog } from "@/lib/remote-logs";
-import { emitToTerminal, emitToSession, mapSessionTerminal } from "@/lib/remote/socket-bridge";
+import { emitToSession, mapSessionTerminal } from "@/lib/remote/socket-bridge";
 import { remoteSocketEvents } from "@/lib/remote/events";
 
 export async function POST(request: NextRequest) {
@@ -52,12 +52,6 @@ export async function POST(request: NextRequest) {
   });
 
   mapSessionTerminal(sessao.id, terminal.id);
-  emitToTerminal(terminal.id, remoteSocketEvents.sessionCreate, {
-    sessaoId: sessao.id,
-    terminalId: terminal.id,
-    usuarioId: usuario.id,
-    usuarioNome: usuario.name,
-  });
   emitToSession(sessao.id, remoteSocketEvents.sessionState, {
     sessaoId: sessao.id,
     status: SessaoRemotaStatus.AGUARDANDO,

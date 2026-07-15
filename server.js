@@ -7,7 +7,8 @@ const next = require("next");
 const { Server } = require("socket.io");
 
 const dev = process.env.NODE_ENV !== "production";
-const hostname = process.env.HOST || "localhost";
+const hostname = "localhost";
+const serverHost = "0.0.0.0";
 const port = parseInt(process.env.PORT || "3000", 10);
 
 const app = next({ dev, hostname, port });
@@ -39,7 +40,9 @@ app.prepare().then(async () => {
     process.exit(1);
   });
 
-  httpServer.listen(port, hostname, () => {
-    console.log(`> Ready on http://${hostname}:${port}`);
+  httpServer.listen(port, serverHost, () => {
+    console.log(`> Ready on http://localhost:${port}`);
+    console.log(`> Ready on http://${serverHost}:${port}`);
+    console.log(`> Accepting connections on your local IP (e.g. 10.0.0.53)`);
   });
 });

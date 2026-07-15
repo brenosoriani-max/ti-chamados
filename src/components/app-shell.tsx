@@ -2,15 +2,20 @@ import { Bell, Search } from "lucide-react";
 import { getFreshSessionUser } from "@/lib/auth";
 import { Input } from "@/components/ui/input";
 import { Sidebar } from "@/components/sidebar";
+import { MobileNav } from "@/components/mobile-nav";
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
   const user = await getFreshSessionUser();
 
   return (
     <div className="min-h-screen bg-background text-foreground">
+      {/* Sidebar for Desktop */}
       <Sidebar user={user} />
 
-      <div className="lg:pl-50 min-h-screen flex flex-col">
+      {/* Navigation for Mobile */}
+      <MobileNav user={user} />
+
+      <div className="lg:pl-72 min-h-screen flex flex-col">
         <header className="sticky top-0 z-30 hidden lg:flex h-16 items-center justify-between gap-8 bg-background border-b border-border/50 px-8">
           <form action="/tickets" method="GET" className="relative max-w-xl flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />

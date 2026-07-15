@@ -42,6 +42,9 @@ export function RemoteSessionViewer({ terminal }: RemoteSessionViewerProps) {
     const peer = new RTCPeerConnection(defaultRtcConfiguration);
     peerRef.current = peer;
 
+    let remoteDescriptionSet = false;
+    const candidateQueue: RTCIceCandidateInit[] = [];
+
     peer.ontrack = (event) => {
       if (videoRef.current) videoRef.current.srcObject = event.streams[0];
       setStatus("Ativa");
@@ -60,20 +63,38 @@ export function RemoteSessionViewer({ terminal }: RemoteSessionViewerProps) {
     socket.off(remoteSocketEvents.webRtcOffer);
     socket.on(remoteSocketEvents.webRtcOffer, async (payload: { sessaoId: string; offer: RTCSessionDescriptionInit }) => {
       if (payload.sessaoId !== sessionId) return;
-      await peer.setRemoteDescription(payload.offer);
-      const answer = await peer.createAnswer();
-      await peer.setLocalDescription(answer);
-      socket.emit(remoteSocketEvents.webRtcAnswer, {
-        sessaoId: sessionId,
-        terminalId: terminal.id,
-        answer,
-      });
+      try {
+        await peer.setRemoteDescription(payload.offer);
+        remoteDescriptionSet = true;
+        const answer = await peer.createAnswer();
+        await peer.setLocalDescription(answer);
+        socket.emit(remoteSocketEvents.webRtcAnswer, {
+          sessaoId: sessionId,
+          terminalId: terminal.id,
+          answer,
+        });
+
+        for (const candidate of candidateQueue) {
+          await peer.addIceCandidate(candidate).catch((err) => {
+            console.error("[webrtc] Failed to add queued candidate:", err);
+          });
+        }
+        candidateQueue.length = 0;
+      } catch (err) {
+        console.error("[webrtc] Error setting remote description from offer:", err);
+      }
     });
 
     socket.off(remoteSocketEvents.webRtcCandidate);
     socket.on(remoteSocketEvents.webRtcCandidate, async (payload: { sessaoId: string; candidate: RTCIceCandidateInit }) => {
       if (payload.sessaoId !== sessionId || !payload.candidate) return;
-      await peer.addIceCandidate(payload.candidate);
+      if (!remoteDescriptionSet) {
+        candidateQueue.push(payload.candidate);
+      } else {
+        await peer.addIceCandidate(payload.candidate).catch((err) => {
+          console.error("[webrtc] Error adding ICE candidate directly:", err);
+        });
+      }
     });
 
     socket.off(remoteSocketEvents.sessionState);
@@ -104,8 +125,8 @@ export function RemoteSessionViewer({ terminal }: RemoteSessionViewerProps) {
     const socket = await ensureSocket();
     const sessionId = data.id as string;
     setSessaoId(sessionId);
-    socket.emit("sessao:join", { sessaoId: sessionId });
     setupPeer(socket, sessionId);
+    socket.emit("sessao:join", { sessaoId: sessionId });
     setStatus("Aguardando agente");
   }
 

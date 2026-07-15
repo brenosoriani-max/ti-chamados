@@ -8,8 +8,8 @@ import {
   findTerminalByToken,
   sweepStaleTerminals,
 } from "@/lib/remote/services/terminal-service";
-import { updateSessionStatus } from "@/lib/remote/services/session-service";
-import { emitTerminalUpdated, setSocketServer, getSessionTerminalId } from "@/lib/remote/socket-bridge";
+import { updateSessionStatus, findSession } from "@/lib/remote/services/session-service";
+import { emitTerminalUpdated, setSocketServer, getSessionTerminalId, mapSessionTerminal, emitToTerminal } from "@/lib/remote/socket-bridge";
 import { SessaoRemotaStatus } from "@/types";
 import type { TerminalRegisterPayload } from "@/lib/remote/events";
 
@@ -67,6 +67,7 @@ function broadcastTerminal(terminal: {
 }
 
 function bindAgentHandlers(socket: AgentSocket) {
+  
   socket.on(remoteSocketEvents.terminalRegister, async (payload: TerminalRegisterPayload, ack?: (r: unknown) => void) => {
     try {
       const terminal = await registerOrUpdateTerminal({
@@ -134,35 +135,71 @@ function bindAgentHandlers(socket: AgentSocket) {
   socket.on(remoteSocketEvents.webRtcCandidate, (payload: { sessaoId: string; candidate: unknown }) => {
     socket.to(`sessao:${payload.sessaoId}`).emit(remoteSocketEvents.webRtcCandidate, payload);
   });
+
+}
+
+async function resolveTerminalId(sessaoId: string, payloadTerminalId?: string): Promise<string> {
+  if (payloadTerminalId) return payloadTerminalId;
+  const inMemory = getSessionTerminalId(sessaoId);
+  if (inMemory) return inMemory;
+  try {
+    const sessao = await findSession(sessaoId);
+    if (sessao?.terminalId) {
+      mapSessionTerminal(sessaoId, sessao.terminalId);
+      return sessao.terminalId;
+    }
+  } catch (error) {
+    console.error(`[remote-socket] Error resolving terminal ID for session ${sessaoId}:`, error);
+  }
+  return "";
 }
 
 function bindTechnicianHandlers(socket: TechSocket) {
   socket.join("technicians");
 
-  socket.on("sessao:join", (payload: { sessaoId: string }) => {
+  socket.on("sessao:join", async (payload: { sessaoId: string }) => {
     socket.join(`sessao:${payload.sessaoId}`);
+
+    try {
+      const sessao = await findSession(payload.sessaoId);
+      if (sessao && sessao.status === SessaoRemotaStatus.AGUARDANDO) {
+        mapSessionTerminal(sessao.id, sessao.terminalId);
+        emitToTerminal(sessao.terminalId, remoteSocketEvents.sessionCreate, {
+          sessaoId: sessao.id,
+          terminalId: sessao.terminalId,
+          usuarioId: sessao.usuarioId,
+          usuarioNome: sessao.usuario?.name ?? "Tecnico",
+        });
+      }
+    } catch (error) {
+      console.error("[remote-socket] Error during sessao:join logic:", error);
+    }
   });
 
   socket.on("sessao:leave", (payload: { sessaoId: string }) => {
     socket.leave(`sessao:${payload.sessaoId}`);
   });
 
-  socket.on(remoteSocketEvents.webRtcAnswer, (payload: { sessaoId: string; answer: unknown; terminalId?: string }) => {
-    const terminalId = payload.terminalId ?? getSessionTerminalId(payload.sessaoId) ?? "";
-    if (terminalId) socket.to(`terminal:${terminalId}`).emit(remoteSocketEvents.webRtcAnswer, payload);
+  socket.on(remoteSocketEvents.webRtcAnswer, async (payload: { sessaoId: string; answer: unknown; terminalId?: string }) => {
+    const terminalId = await resolveTerminalId(payload.sessaoId, payload.terminalId);
+    if (terminalId) {
+      socket.to(`terminal:${terminalId}`).emit(remoteSocketEvents.webRtcAnswer, payload);
+    }
     socket.to(`sessao:${payload.sessaoId}`).emit(remoteSocketEvents.webRtcAnswer, payload);
   });
 
-  socket.on(remoteSocketEvents.webRtcCandidate, (payload: { sessaoId: string; candidate: unknown; terminalId?: string }) => {
-    const terminalId = payload.terminalId ?? getSessionTerminalId(payload.sessaoId) ?? "";
+  socket.on(remoteSocketEvents.webRtcCandidate, async (payload: { sessaoId: string; candidate: unknown; terminalId?: string }) => {
+    const terminalId = await resolveTerminalId(payload.sessaoId, payload.terminalId);
     const room = terminalId ? `terminal:${terminalId}` : `sessao:${payload.sessaoId}`;
     socket.to(room).emit(remoteSocketEvents.webRtcCandidate, payload);
   });
 
   const relayToAgent = (event: string) => {
-    socket.on(event, (payload: { sessaoId: string; terminalId?: string }) => {
-      const terminalId = payload.terminalId ?? getSessionTerminalId(payload.sessaoId);
-      if (terminalId) socket.to(`terminal:${terminalId}`).emit(event, payload);
+    socket.on(event, async (payload: { sessaoId: string; terminalId?: string }) => {
+      const terminalId = await resolveTerminalId(payload.sessaoId, payload.terminalId);
+      if (terminalId) {
+        socket.to(`terminal:${terminalId}`).emit(event, payload);
+      }
     });
   };
 

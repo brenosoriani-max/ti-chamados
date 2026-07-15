@@ -4,6 +4,8 @@ import { v4 as uuidv4 } from "uuid";
 type AgentStore = {
   equipmentUuid: string;
   token?: string;
+  serverUrl?: string;
+  terminalName?: string;
 };
 
 const store = new Store<AgentStore>({
@@ -27,3 +29,20 @@ export function getToken() {
 export function setToken(token: string) {
   store.set("token", token);
 }
+
+export function getServerUrl() {
+  return store.get("serverUrl");
+}
+
+export function setServerUrl(url: string) {
+  store.set("serverUrl", url);
+}
+
+export function getTerminalName() {
+  return store.get("terminalName");
+}
+
+export function setTerminalName(name: string) {
+  store.set("terminalName", name);
+}
+
