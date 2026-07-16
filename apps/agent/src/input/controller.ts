@@ -27,9 +27,7 @@ function mapButton(button: string): Button {
   }
 }
 
-// payload.x / payload.y chegam normalizados (0 a 1), representando a posição
-// relativa dentro do vídeo no painel do técnico. Aqui escalamos para a
-// resolução real da tela primária desta máquina.
+
 function toScreenPoint(xPercent: number, yPercent: number): Point {
   const primary = screen.getPrimaryDisplay();
   const x = Math.round(xPercent * primary.size.width);
@@ -127,10 +125,6 @@ export async function handleMouseScroll(payload: MouseScrollPayload) {
   }
 }
 
-// Modificadores (Ctrl/Shift/Alt) chegam como eventos próprios de tecla
-// (key === "Control" | "Shift" | "Alt") vindos do navegador, então não
-// precisamos simular pressionar/soltar manualmente a cada tecla comum —
-// isso evita quebrar combinações como Ctrl+C.
 export async function handleKeyboardKey(
   payload: KeyboardKeyPayload,
   type: "down" | "up"
