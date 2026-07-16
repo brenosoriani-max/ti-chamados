@@ -120,34 +120,53 @@ export function RemoteSessionViewer({ terminal }: RemoteSessionViewerProps) {
     });
   }
 
-  async function startSession() {
-
-        if (sessaoId) {
-      await endSession();
-    }
-
-    await startSession()
-    setStatus(messages.remote.creating);
-    const response = await fetch("/api/remoto/iniciar", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ terminalId: terminal.id }),
-    });
-    if (!response.ok) {
-      const error = await readApiError(response, messages.remote.startFailed);
-      setStatus(error);
-      toast.error(error);
-      return;
-    }
-    const data = await response.json();
-
-    const socket = await ensureSocket();
-    const sessionId = data.id as string;
-    setSessaoId(sessionId);
-    setupPeer(socket, sessionId);
-    socket.emit("sessao:join", { sessaoId: sessionId });
-    setStatus(messages.remote.waitingAgent);
+ async function startSession() {
+  if (sessaoId) {
+    await endSession();
   }
+
+  setStatus(messages.remote.creating);
+
+  const response = await fetch(
+    "/api/remoto/iniciar",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        terminalId: terminal.id,
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const error = await readApiError(
+      response,
+      messages.remote.startFailed
+    );
+
+    setStatus(error);
+    toast.error(error);
+    return;
+  }
+
+  const data = await response.json();
+
+  const socket = await ensureSocket();
+
+  const sessionId = data.id as string;
+
+  setSessaoId(sessionId);
+
+  setupPeer(socket, sessionId);
+
+  socket.emit("sessao:join", {
+    sessaoId: sessionId,
+  });
+
+  setStatus(messages.remote.waitingAgent);
+}
 
   function endSessionLocal() {
     peerRef.current?.close();
