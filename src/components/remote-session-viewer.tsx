@@ -51,6 +51,10 @@ export function RemoteSessionViewer({ terminal }: RemoteSessionViewerProps) {
       if (videoRef.current) videoRef.current.srcObject = event.streams[0];
       setStatus(messages.remote.active);
       fetch("/api/remoto/sessoes", { method: "GET" }).catch(() => undefined);
+
+      setTimeout(() => {
+      videoRef.current?.focus();
+      }, 300);
     };
 
     peer.onicecandidate = (event) => {
@@ -61,6 +65,12 @@ export function RemoteSessionViewer({ terminal }: RemoteSessionViewerProps) {
         candidate: event.candidate.toJSON(),
       });
     };
+
+     socketRef.current?.off(remoteSocketEvents.webRtcOffer);
+    socketRef.current?.off(remoteSocketEvents.webRtcAnswer);
+    socketRef.current?.off(remoteSocketEvents.webRtcCandidate);
+    socketRef.current?.off(remoteSocketEvents.sessionState);
+    socketRef.current?.off(remoteSocketEvents.sessionEnd);
 
     socket.off(remoteSocketEvents.webRtcOffer);
     socket.on(remoteSocketEvents.webRtcOffer, async (payload: { sessaoId: string; offer: RTCSessionDescriptionInit }) => {
@@ -86,7 +96,6 @@ export function RemoteSessionViewer({ terminal }: RemoteSessionViewerProps) {
         console.error("[webrtc] Error setting remote description from offer:", err);
       }
     });
-
     socket.off(remoteSocketEvents.webRtcCandidate);
     socket.on(remoteSocketEvents.webRtcCandidate, async (payload: { sessaoId: string; candidate: RTCIceCandidateInit }) => {
       if (payload.sessaoId !== sessionId || !payload.candidate) return;
@@ -112,6 +121,12 @@ export function RemoteSessionViewer({ terminal }: RemoteSessionViewerProps) {
   }
 
   async function startSession() {
+
+        if (sessaoId) {
+      await endSession();
+    }
+
+    await startSession()
     setStatus(messages.remote.creating);
     const response = await fetch("/api/remoto/iniciar", {
       method: "POST",
@@ -153,20 +168,23 @@ export function RemoteSessionViewer({ terminal }: RemoteSessionViewerProps) {
     endSessionLocal();
   }
 
-  function sendMouseMove(event: React.MouseEvent<HTMLVideoElement>) {
-    if (!sessaoId || !videoRef.current) return;
-    const rect = videoRef.current.getBoundingClientRect();
-    const x = ((event.clientX - rect.left) / rect.width) * videoRef.current.videoWidth;
-    const y = ((event.clientY - rect.top) / rect.height) * videoRef.current.videoHeight;
-    socketRef.current?.emit(remoteSocketEvents.mouseMove, {
+ function sendMouseMove(event: React.MouseEvent<HTMLVideoElement>) {
+  if (!sessaoId || !videoRef.current) return;
+
+  const rect = videoRef.current.getBoundingClientRect();
+
+  socketRef.current?.emit(
+    remoteSocketEvents.mouseMove,
+    {
       sessaoId,
       terminalId: terminal.id,
-      x,
-      y,
+      x: (event.clientX - rect.left) / rect.width,
+      y: (event.clientY - rect.top) / rect.height,
       screenWidth: videoRef.current.videoWidth,
       screenHeight: videoRef.current.videoHeight,
-    });
-  }
+    }
+  );
+}
 
   function sendMouseClick(event: React.MouseEvent<HTMLVideoElement>, button: "left" | "right", double = false) {
     if (!sessaoId || !videoRef.current) return;
@@ -174,14 +192,110 @@ export function RemoteSessionViewer({ terminal }: RemoteSessionViewerProps) {
     socketRef.current?.emit(remoteSocketEvents.mouseClick, {
       sessaoId,
       terminalId: terminal.id,
-      x: ((event.clientX - rect.left) / rect.width) * videoRef.current.videoWidth,
-      y: ((event.clientY - rect.top) / rect.height) * videoRef.current.videoHeight,
+      x: (event.clientX - rect.left) / rect.width,
+      y: (event.clientY - rect.top) / rect.height,
       button,
       double,
       screenWidth: videoRef.current.videoWidth,
       screenHeight: videoRef.current.videoHeight,
     });
   }
+
+async function sendKeyDown(
+  event: React.KeyboardEvent<HTMLVideoElement>
+) {
+  if (!sessaoId) return;
+
+ 
+  if (event.repeat) {
+    return;
+  }
+
+ 
+  if (
+    event.ctrlKey &&
+    event.key.toLowerCase() === "v"
+  ) {
+    event.preventDefault();
+
+    try {
+      const text = await navigator.clipboard.readText();
+
+      if (text) {
+        socketRef.current?.emit(
+          remoteSocketEvents.keyboardType,
+          {
+            sessaoId,
+            terminalId: terminal.id,
+            text,
+          }
+        );
+      }
+    } catch (err) {
+      console.error("Clipboard read failed:", err);
+    }
+
+    return;
+  }
+
+  // Impede comportamento da página local
+  // (scroll, atalhos do navegador, espaço, etc)
+  event.preventDefault();
+
+  socketRef.current?.emit(
+    remoteSocketEvents.keyboardKeyDown,
+    {
+      sessaoId,
+      terminalId: terminal.id,
+      key: event.key,
+      code: event.code,
+      ctrlKey: event.ctrlKey,
+      altKey: event.altKey,
+      shiftKey: event.shiftKey,
+      metaKey: event.metaKey,
+    }
+  );
+}
+
+function sendKeyUp(event: React.KeyboardEvent<HTMLVideoElement>) {
+  if (!sessaoId) return;
+
+  event.preventDefault();
+
+  socketRef.current?.emit(
+    remoteSocketEvents.keyboardKeyUp,
+    {
+      sessaoId,
+      terminalId: terminal.id,
+      key: event.key,
+      code: event.code,
+      ctrlKey: event.ctrlKey,
+      altKey: event.altKey,
+      shiftKey: event.shiftKey,
+      metaKey: event.metaKey,
+    }
+  );
+}
+
+function sendMouseWheel(
+  event: React.WheelEvent<HTMLVideoElement>
+) {
+  if (!sessaoId) return;
+
+  event.preventDefault();
+
+  socketRef.current?.emit(
+    remoteSocketEvents.mouseScroll,
+    {
+      sessaoId,
+      terminalId: terminal.id,
+      x: 0,
+      y: 0,
+      deltaX: event.deltaX,
+      deltaY: event.deltaY,
+    }
+  );
+}
 
   useEffect(() => {
     return () => {
@@ -236,13 +350,24 @@ export function RemoteSessionViewer({ terminal }: RemoteSessionViewerProps) {
         <div className="relative flex items-center justify-center overflow-hidden">
           <video
             ref={videoRef}
+            tabIndex={0}
             autoPlay
+            onWheel={sendMouseWheel}
             playsInline
+            onKeyDown={sendKeyDown}
+            onKeyUp={sendKeyUp}
             className="h-full max-h-[calc(100vh-15rem)] w-full object-contain transition-transform"
             style={{ transform: `scale(${zoom})` }}
             onMouseMove={sendMouseMove}
-            onClick={(e) => sendMouseClick(e, "left")}
-            onContextMenu={(e) => { e.preventDefault(); sendMouseClick(e, "right"); }}
+            onClick={(e) => {
+              videoRef.current?.focus();
+              sendMouseClick(e, "left");
+            }}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              videoRef.current?.focus();
+              sendMouseClick(e, "right");
+            }}
             onDoubleClick={(e) => sendMouseClick(e, "left", true)}
           />
           {!sessaoId && (
@@ -258,6 +383,26 @@ export function RemoteSessionViewer({ terminal }: RemoteSessionViewerProps) {
           <Button variant="outline" className="border-white/20 bg-transparent text-white hover:bg-white/10"
             onClick={() => socketRef.current?.emit(remoteSocketEvents.keyboardKeyDown, { sessaoId, terminalId: terminal.id, key: "Delete", code: "Delete", ctrlKey: true, altKey: true })}>
             Ctrl+Alt+Del
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={async () => {
+              if (!sessaoId) return;
+
+              const text = await navigator.clipboard.readText();
+
+              socketRef.current?.emit(
+                remoteSocketEvents.keyboardType,
+                {
+                  sessaoId,
+                  terminalId: terminal.id,
+                  text,
+                }
+              );
+            }}
+          >
+            <Keyboard className="h-4 w-4" />
           </Button>
           <Button variant="outline" size="icon"><MousePointer2 className="h-4 w-4" /></Button>
           <Button variant="outline" size="icon"><Keyboard className="h-4 w-4" /></Button>

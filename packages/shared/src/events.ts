@@ -17,6 +17,7 @@ export const remoteSocketEvents = {
   mouseScroll: "mouse:scroll",
   keyboardKeyDown: "keyboard:keyDown",
   keyboardKeyUp: "keyboard:keyUp",
+  keyboardType: "keyboard:type",
   clipboardGet: "clipboard:get",
   clipboardSet: "clipboard:set",
   fileTransferStart: "file:start",

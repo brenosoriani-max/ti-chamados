@@ -318,7 +318,11 @@ export const SETUP_HTML = `<!DOCTYPE html>
     // handle status updates from main process
     window.tiAgent.onStatusUpdated((event) => {
       updateStatusUI(event.status, event.error, event.token);
-      if (event.status === "Online") {
+
+      const isSettled =
+        event.status === "Online" || event.status === "Erro de Conexão";
+
+      if (isSettled) {
         saveBtn.disabled = false;
         saveBtn.textContent = "Salvar & Conectar";
       }

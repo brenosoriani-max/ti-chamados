@@ -13,6 +13,7 @@ import {
   handleMouseMove,
   handleMouseScroll,
   handleKeyboardKey,
+  handleTypeText,
 } from "../input/controller";
 import { HEARTBEAT_INTERVAL_MS } from "../../../../packages/shared/src/events";
 import type { Socket } from "socket.io-client";
@@ -300,10 +301,20 @@ export async function startAgent() {
       handleKeyboardKey(payload, "up")
   );
 
+  socket.on(
+  remoteSocketEvents.keyboardType,
+  handleTypeText
+);
+
+
+
   heartbeatInterval = setInterval(() => {
     if (!socket || !socket.connected) {
       return;
     }
+
+    
+
 
     const info = collectSystemInfo();
 

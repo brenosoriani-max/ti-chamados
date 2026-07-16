@@ -1,7 +1,7 @@
 import os from "os";
 import { screen } from "electron";
 
-const AGENT_VERSION = "1.0.0";
+const AGENT_VERSION = "1.0.5";
 
 export function collectSystemInfo() {
   const primary = screen.getPrimaryDisplay();

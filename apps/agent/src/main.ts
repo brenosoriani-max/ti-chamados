@@ -1,304 +1,121 @@
+import { app, BrowserWindow, desktopCapturer, ipcMain } from "electron";
+import path from "path";
+import fs from "fs";
+import { startAgent, stopAgent, getAgentStatus, setStatusChangeListener } from "./agent/bootstrap";
+import { getServerUrl, setServerUrl, getTerminalName, setTerminalName, getToken, setToken } from "./storage/store";
+import { SETUP_HTML } from "./agent/setupHtml";
 
-import {
-  mouse,
-  keyboard,
-  Button,
-  Key,
-  Point,
-} from "@nut-tree-fork/nut-js";
+// Must be called before app is ready — prevents GPU conflicts in headless capture windows
+app.disableHardwareAcceleration();
 
-import { screen } from "electron";
-import { KeyboardKeyPayload, MouseClickPayload, MouseMovePayload, MouseScrollPayload } from "../../../packages/shared/src/types/input";
+let mainWindow: BrowserWindow | null = null;
+let isQuitting = false;
 
-
-
-function mapButton(button: string): Button {
-  switch (button) {
-    case "right":
-      return Button.RIGHT;
-
-    case "middle":
-      return Button.MIDDLE;
-
-    default:
-      return Button.LEFT;
-  }
-}
-
-/**
- * Converte coordenadas normalizadas (0-1)
- * para coordenadas reais da tela.
- *
- * Atualmente usa a tela primária.
- * Futuramente pode receber displayId
- * pelo payload para suportar múltiplos monitores.
- */
-function toScreenPoint(
-  xPercent: number,
-  yPercent: number
-): Point {
-  const display = screen.getPrimaryDisplay();
-
-  const x =
-    display.bounds.x +
-    Math.round(xPercent * display.size.width);
-
-  const y =
-    display.bounds.y +
-    Math.round(yPercent * display.size.height);
-
-  return new Point(x, y);
-}
-
-function mapKey(
-  payload: KeyboardKeyPayload
-): Key | undefined {
-  const { key, code } = payload;
-
-  if (
-    code.startsWith("Key") &&
-    code.length === 4
-  ) {
-    const letter = code.replace("Key", "");
-
-    const mapped =
-      Key[letter as keyof typeof Key];
-
-    if (mapped !== undefined) {
-      return mapped;
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+  app.quit();
+} else {
+  app.on("second-instance", () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.show();
+      mainWindow.focus();
     }
-  }
+  });
 
-  if (code.startsWith("Digit")) {
-    const digit = code.replace(
-      "Digit",
-      ""
-    );
+  function createWindow() {
+    mainWindow = new BrowserWindow({
+      width: 420,
+      height: 600,
+      show: false,
+      autoHideMenuBar: true,
+      resizable: false,
+      webPreferences: {
+        preload: path.join(__dirname, "preload.js"),
+        contextIsolation: true,
+        nodeIntegration: false,
+      },
+    });
 
-    const mapped =
-      Key[
-        `Num${digit}` as keyof typeof Key
-      ];
-
-    if (mapped !== undefined) {
-      return mapped;
-    }
-  }
-
-  switch (key) {
-    case "Enter":
-      return Key.Enter;
-
-    case "Escape":
-      return Key.Escape;
-
-    case "Backspace":
-      return Key.Backspace;
-
-    case "Tab":
-      return Key.Tab;
-
-    case "Delete":
-      return Key.Delete;
-
-    case " ":
-    case "Spacebar":
-      return Key.Space;
-
-    case "ArrowUp":
-      return Key.Up;
-
-    case "ArrowDown":
-      return Key.Down;
-
-    case "ArrowLeft":
-      return Key.Left;
-
-    case "ArrowRight":
-      return Key.Right;
-
-    case "Shift":
-      return Key.LeftShift;
-
-    case "Control":
-      return Key.LeftControl;
-
-    case "Alt":
-      return Key.LeftAlt;
-
-    case "Meta":
-      return Key.LeftWin;
-
-    case "CapsLock":
-      return Key.CapsLock;
-
-    case "Home":
-      return Key.Home;
-
-    case "End":
-      return Key.End;
-
-    case "PageUp":
-      return Key.PageUp;
-
-    case "PageDown":
-      return Key.PageDown;
-
-    default: {
-      const upper =
-        key.length === 1
-          ? key.toUpperCase()
-          : key;
-
-      const mapped =
-        Key[
-          upper as keyof typeof Key
-        ];
-
-      return mapped;
-    }
-  }
-}
-
-/**
- * ===================================
- * Mouse movement buffer
- * ===================================
- */
-
-let pendingMouseMove:
-  | MouseMovePayload
-  | null = null;
-
-let mouseLoopStarted = false;
-
-async function startMouseLoop() {
-  mouseLoopStarted = true;
-
-  while (true) {
-    try {
-      if (pendingMouseMove) {
-        const move = pendingMouseMove;
-
-        pendingMouseMove = null;
-
-        await mouse.setPosition(
-          toScreenPoint(
-            move.x,
-            move.y
-          )
-        );
+    mainWindow.on("close", (e) => {
+      if (!isQuitting && getServerUrl()) {
+        e.preventDefault();
+        mainWindow?.hide();
       }
-    } catch (err) {
-      console.error(
-        "[Agent] Mouse move error:",
-        err
-      );
+    });
+  }
+
+  app.whenReady().then(async () => {
+    createWindow();
+
+    ipcMain.handle("settings:get", () => {
+      const activeStatus = getAgentStatus();
+      return {
+        serverUrl: getServerUrl() || "",
+        terminalName: getTerminalName() || "",
+        token: getToken() || "",
+        status: activeStatus.status,
+        error: activeStatus.error,
+      };
+    });
+
+    ipcMain.handle("settings:save", async (_, data: { serverUrl: string; terminalName?: string; token?: string }) => {
+      setServerUrl(data.serverUrl);
+      setTerminalName(data.terminalName || "");
+      setToken(data.token || "");
+      await startAgent();
+    });
+
+    
+    ipcMain.handle("agent:stop", async () => {
+    await stopAgent();
+    });
+
+    ipcMain.handle("agent:restart", async () => {
+    await startAgent();
+    });
+
+    ipcMain.on("window:hide", () => {
+      if (mainWindow) {
+        mainWindow.hide();
+      }
+    });
+
+
+
+    ipcMain.handle("desktop:getSources", async () => {
+      const sources = await desktopCapturer.getSources({ types: ["screen"], thumbnailSize: { width: 0, height: 0 } });
+      return sources.map((s) => ({ id: s.id, name: s.name }));
+    });
+
+    setStatusChangeListener((statusData) => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send("status-updated", statusData);
+      }
+    });
+
+    const setupHtmlPath = path.join(app.getPath("userData"), "agent-setup.html");
+    fs.writeFileSync(setupHtmlPath, SETUP_HTML, "utf-8");
+    if (mainWindow) {
+      await mainWindow.loadFile(setupHtmlPath);
     }
 
-    await new Promise((resolve) =>
-      setTimeout(resolve, 8)
-    );
-  }
-}
-
-export function handleMouseMove(
-  payload: MouseMovePayload
-) {
-  pendingMouseMove = payload;
-
-  if (!mouseLoopStarted) {
-    void startMouseLoop();
-  }
-}
-
-export async function handleMouseClick(
-  payload: MouseClickPayload
-) {
-  try {
-    await mouse.setPosition(
-      toScreenPoint(
-        payload.x,
-        payload.y
-      )
-    );
-
-    const button = mapButton(
-      payload.button
-    );
-
-    if (payload.double) {
-      await mouse.doubleClick(
-        button
-      );
+    const serverUrl = getServerUrl();
+    if (!serverUrl) {
+      if (mainWindow) {
+        mainWindow.show();
+      }
     } else {
-      await mouse.click(button);
+      await startAgent();
     }
-  } catch (err) {
-    console.error(
-      "[Agent] Mouse click error:",
-      err
-    );
-  }
-}
+  });
 
-export async function handleMouseScroll(
-  payload: MouseScrollPayload
-) {
-  try {
-    const amount = Math.max(
-      1,
-      Math.round(
-        Math.abs(payload.deltaY) /
-          120
-      )
-    );
+  app.on("before-quit", () => {
+    isQuitting = true;
+  });
 
-    if (payload.deltaY > 0) {
-      await mouse.scrollDown(
-        amount
-      );
-    } else if (
-      payload.deltaY < 0
-    ) {
-      await mouse.scrollUp(
-        amount
-      );
-    }
-  } catch (err) {
-    console.error(
-      "[Agent] Mouse scroll error:",
-      err
-    );
-  }
-}
-
-export async function handleKeyboardKey(
-  payload: KeyboardKeyPayload,
-  type: "down" | "up"
-) {
-  try {
-    const mappedKey =
-      mapKey(payload);
-
-    if (!mappedKey) {
-      return;
-    }
-
-    if (type === "down") {
-      await keyboard.pressKey(
-        mappedKey
-      );
-    } else {
-      await keyboard.releaseKey(
-        mappedKey
-      );
-    }
-  } catch (err) {
-    console.error(
-      "[Agent] Keyboard error:",
-      err
-    );
-  }
+  app.on("window-all-closed", () => {
+    if (process.platform !== "darwin") app.quit();
+  });
 }
 

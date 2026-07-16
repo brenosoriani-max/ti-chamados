@@ -33,3 +33,8 @@ export type KeyboardKeyPayload = {
   shiftKey?: boolean;
   metaKey?: boolean;
 };
+
+export type KeyboardTypePayload = {
+  sessaoId: string;
+  text: string;
+};
