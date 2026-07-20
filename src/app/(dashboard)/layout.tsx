@@ -15,9 +15,6 @@ export default async function DashboardLayoutWrapper({
     redirect("/login");
   }
 
-
- 
-
   return (
     <div className="flex min-h-screen bg-background">
       <Sidebar user={user} />

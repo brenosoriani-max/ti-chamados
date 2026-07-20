@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Camera, Expand, Keyboard, MonitorUp, MousePointer2, RefreshCw, Square, ZoomIn, ZoomOut } from "lucide-react";
+import Link from "next/link";
+import { ArrowLeft, Camera, Expand, Keyboard, MonitorUp, RefreshCw, Square, ZoomIn, ZoomOut } from "lucide-react";
 import { io, type Socket } from "socket.io-client";
 import { Button } from "@/components/ui/button";
 import { TerminalStatusBadge } from "@/components/terminal-status-badge";
@@ -14,6 +15,9 @@ type Terminal = {
   nome: string;
   status: string;
   sistemaOperacional?: string | null;
+  hostname?: string | null;
+  usuarioLogado?: string | null;
+  resolucaoTela?: string | null;
 };
 
 type RemoteSessionViewerProps = {
@@ -28,6 +32,8 @@ export function RemoteSessionViewer({ terminal }: RemoteSessionViewerProps) {
   const [sessaoId, setSessaoId] = useState<string | null>(null);
   const [status, setStatus] = useState<string>(messages.remote.ready);
   const [zoom, setZoom] = useState(1);
+  const isOnline = terminal.status === "ONLINE";
+  const isActive = Boolean(sessaoId);
 
   async function ensureSocket() {
     if (socketRef.current?.connected) return socketRef.current;
@@ -120,16 +126,12 @@ export function RemoteSessionViewer({ terminal }: RemoteSessionViewerProps) {
     });
   }
 
- async function startSession() {
-  if (sessaoId) {
-    await endSession();
-  }
+  async function startSession() {
+    if (sessaoId) await endSession();
 
-  setStatus(messages.remote.creating);
-
-  const response = await fetch(
-    "/api/remoto/iniciar",
-    {
+    setStatus(messages.remote.creating);
+    try {
+      const response = await fetch("/api/remoto/iniciar", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -137,36 +139,28 @@ export function RemoteSessionViewer({ terminal }: RemoteSessionViewerProps) {
       body: JSON.stringify({
         terminalId: terminal.id,
       }),
+      });
+
+      if (!response.ok) {
+        const error = await readApiError(response, messages.remote.startFailed);
+        setStatus(error);
+        toast.error(error);
+        return;
+      }
+
+      const data = await response.json();
+      const socket = await ensureSocket();
+      const sessionId = data.id as string;
+
+      setSessaoId(sessionId);
+      setupPeer(socket, sessionId);
+      socket.emit("sessao:join", { sessaoId: sessionId });
+      setStatus(messages.remote.waitingAgent);
+    } catch {
+      setStatus(messages.remote.startFailed);
+      toast.error(messages.remote.startFailed);
     }
-  );
-
-  if (!response.ok) {
-    const error = await readApiError(
-      response,
-      messages.remote.startFailed
-    );
-
-    setStatus(error);
-    toast.error(error);
-    return;
   }
-
-  const data = await response.json();
-
-  const socket = await ensureSocket();
-
-  const sessionId = data.id as string;
-
-  setSessaoId(sessionId);
-
-  setupPeer(socket, sessionId);
-
-  socket.emit("sessao:join", {
-    sessaoId: sessionId,
-  });
-
-  setStatus(messages.remote.waitingAgent);
-}
 
   function endSessionLocal() {
     peerRef.current?.close();
@@ -323,34 +317,20 @@ function sendMouseWheel(
     };
   }, []);
 
-  return (
-    <div className="min-h-[calc(100vh-8rem)] overflow-hidden rounded-lg border border-border bg-background">
-      <div className="flex flex-col gap-3 border-b border-border bg-card px-4 py-3 md:flex-row md:items-center md:justify-between">
-        <div className="min-w-0">
-          <div className="flex items-center gap-3">
-            <MonitorUp className="h-5 w-5 text-primary" />
-            <h1 className="truncate text-sm font-bold">{terminal.nome}</h1>
-            <TerminalStatusBadge status={terminal.status} />
-          </div>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Status: <span className="font-semibold text-foreground">{sessionStatusLabel(status)}</span>
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {!sessaoId ? (
-            <Button onClick={startSession} disabled={terminal.status !== "ONLINE"} className="gap-2">
-              <MonitorUp className="h-4 w-4" /> Conectar
-            </Button>
-          ) : (
-            <Button variant="destructive" onClick={endSession} className="gap-2">
-              <Square className="h-4 w-4" /> Encerrar
-            </Button>
-          )}
-          <Button variant="outline" size="icon" onClick={() => containerRef.current?.requestFullscreen()}><Expand className="h-4 w-4" /></Button>
-          <Button variant="outline" size="icon" onClick={() => setZoom((z) => Math.min(z + 0.1, 2))}><ZoomIn className="h-4 w-4" /></Button>
-          <Button variant="outline" size="icon" onClick={() => setZoom((z) => Math.max(z - 0.1, 0.5))}><ZoomOut className="h-4 w-4" /></Button>
-          <Button variant="outline" size="icon" onClick={startSession}><RefreshCw className="h-4 w-4" /></Button>
-          <Button variant="outline" size="icon" onClick={() => {
+  async function sendClipboard() {
+    if (!sessaoId) return;
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text) {
+        socketRef.current?.emit(remoteSocketEvents.keyboardType, { sessaoId, terminalId: terminal.id, text });
+        toast.success("Texto enviado para o computador remoto.");
+      }
+    } catch {
+      toast.error("Não foi possível acessar a área de transferência.");
+    }
+  }
+
+  function takeScreenshot() {
             const video = videoRef.current;
             if (!video) return;
             const canvas = document.createElement("canvas");
@@ -361,11 +341,64 @@ function sendMouseWheel(
             link.download = `sessao-${terminal.nome}.png`;
             link.href = canvas.toDataURL("image/png");
             link.click();
-          }}><Camera className="h-4 w-4" /></Button>
-        </div>
-      </div>
+  }
 
-      <div ref={containerRef} className="grid min-h-[620px] grid-rows-[1fr_auto] bg-black">
+  return (
+    <section className="mx-auto flex w-full max-w-[1440px] flex-col gap-4">
+      <header className="rounded-xl border border-border/60 bg-card p-4 shadow-sm sm:p-5">
+        <Link href="/terminais" className="mb-4 inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground">
+          <ArrowLeft className="h-3.5 w-3.5" /> Voltar para terminais
+        </Link>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><MonitorUp className="h-4 w-4" /></div>
+              <h1 className="truncate text-xl font-bold tracking-tight sm:text-2xl">{terminal.nome}</h1>
+              <TerminalStatusBadge status={terminal.status} />
+            </div>
+            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+              <span>{terminal.hostname ?? "Computador remoto"}</span>
+              {terminal.sistemaOperacional && <span>{terminal.sistemaOperacional}</span>}
+              {terminal.usuarioLogado && <span>Usuário: {terminal.usuarioLogado}</span>}
+              {terminal.resolucaoTela && <span>{terminal.resolucaoTela}</span>}
+            </div>
+          </div>
+          <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
+            <div className="flex items-center gap-2 rounded-lg bg-muted/60 px-3 py-2 text-xs">
+              <span className={`h-2 w-2 rounded-full ${isActive ? "bg-emerald-500" : "bg-muted-foreground/50"}`} />
+              <span className="text-muted-foreground">Sessão</span>
+              <span className="font-semibold text-foreground">{sessionStatusLabel(status)}</span>
+            </div>
+            {!isActive ? (
+              <Button onClick={startSession} disabled={!isOnline} className="gap-2">
+                <MonitorUp className="h-4 w-4" /> Conectar
+              </Button>
+            ) : (
+              <Button variant="destructive" onClick={endSession} className="gap-2">
+                <Square className="h-4 w-4" /> Encerrar sessão
+              </Button>
+            )}
+          </div>
+        </div>
+        {!isOnline && <p className="mt-4 rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">Este computador está offline. Aguarde-o ficar disponível para iniciar o acesso.</p>}
+      </header>
+
+      <div ref={containerRef} className="overflow-hidden rounded-xl border border-border/60 bg-zinc-950 shadow-sm">
+        <div className="flex flex-col gap-3 border-b border-white/10 bg-zinc-900 px-3 py-3 text-white sm:flex-row sm:items-center sm:justify-between sm:px-4">
+          <div>
+            <p className="text-xs font-semibold">Tela remota</p>
+            <p className="mt-0.5 text-[11px] text-zinc-400">Clique na tela para controlar. Use Ctrl+V para colar texto.</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Button variant="outline" size="icon" title="Tela cheia" aria-label="Abrir em tela cheia" className="h-8 w-8 border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white" onClick={() => containerRef.current?.requestFullscreen()}><Expand className="h-4 w-4" /></Button>
+            <Button variant="outline" size="icon" title="Diminuir zoom" aria-label="Diminuir zoom" disabled={zoom <= 0.5} className="h-8 w-8 border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white" onClick={() => setZoom((z) => Math.max(z - 0.1, 0.5))}><ZoomOut className="h-4 w-4" /></Button>
+            <span className="min-w-11 text-center text-[11px] font-medium text-zinc-300">{Math.round(zoom * 100)}%</span>
+            <Button variant="outline" size="icon" title="Aumentar zoom" aria-label="Aumentar zoom" disabled={zoom >= 2} className="h-8 w-8 border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white" onClick={() => setZoom((z) => Math.min(z + 0.1, 2))}><ZoomIn className="h-4 w-4" /></Button>
+            <Button variant="outline" size="icon" title="Reconectar" aria-label="Reconectar sessão" disabled={!isOnline} className="h-8 w-8 border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white" onClick={startSession}><RefreshCw className="h-4 w-4" /></Button>
+            <Button variant="outline" size="icon" title="Capturar tela" aria-label="Capturar tela" disabled={!isActive} className="h-8 w-8 border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white" onClick={takeScreenshot}><Camera className="h-4 w-4" /></Button>
+          </div>
+        </div>
+        <div className="grid min-h-[520px] grid-rows-[1fr_auto] bg-black sm:min-h-[620px]">
         <div className="relative flex items-center justify-center overflow-hidden">
           <video
             ref={videoRef}
@@ -390,43 +423,35 @@ function sendMouseWheel(
             onDoubleClick={(e) => sendMouseClick(e, "left", true)}
           />
           {!sessaoId && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black text-center text-white">
-              <div>
-                <MonitorUp className="mx-auto mb-4 h-10 w-10 opacity-70" />
-                <p className="text-sm font-bold">Nenhuma sessao ativa</p>
+            <div className="absolute inset-0 flex items-center justify-center bg-black p-6 text-center text-white">
+              <div className="max-w-xs">
+                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-white/10"><MonitorUp className="h-6 w-6 text-white/80" /></div>
+                <p className="text-sm font-semibold">Nenhuma sessão ativa</p>
+                <p className="mt-1 text-xs text-white/60">Inicie uma conexão para visualizar e controlar este computador.</p>
               </div>
             </div>
           )}
         </div>
-        <div className="flex flex-wrap items-center gap-2 border-t border-white/10 bg-zinc-950 px-4 py-3 text-white">
-          <Button variant="outline" className="border-white/20 bg-transparent text-white hover:bg-white/10"
+        <div className="flex flex-wrap items-center gap-2 border-t border-white/10 bg-zinc-900 px-3 py-3 text-white sm:px-4">
+          <Button variant="outline" size="sm" disabled={!isActive} className="border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
             onClick={() => socketRef.current?.emit(remoteSocketEvents.keyboardKeyDown, { sessaoId, terminalId: terminal.id, key: "Delete", code: "Delete", ctrlKey: true, altKey: true })}>
             Ctrl+Alt+Del
           </Button>
           <Button
             variant="outline"
             size="icon"
-            onClick={async () => {
-              if (!sessaoId) return;
-
-              const text = await navigator.clipboard.readText();
-
-              socketRef.current?.emit(
-                remoteSocketEvents.keyboardType,
-                {
-                  sessaoId,
-                  terminalId: terminal.id,
-                  text,
-                }
-              );
-            }}
+            title="Colar texto da área de transferência"
+            aria-label="Colar texto da área de transferência"
+            disabled={!isActive}
+            className="h-8 w-8 border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
+            onClick={sendClipboard}
           >
             <Keyboard className="h-4 w-4" />
           </Button>
-          <Button variant="outline" size="icon"><MousePointer2 className="h-4 w-4" /></Button>
-          <Button variant="outline" size="icon"><Keyboard className="h-4 w-4" /></Button>
+          <p className="ml-auto text-[11px] text-zinc-400">Atalhos e comandos são enviados ao computador remoto.</p>
         </div>
       </div>
-    </div>
+      </div>
+    </section>
   );
 }

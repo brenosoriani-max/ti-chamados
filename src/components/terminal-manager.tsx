@@ -60,12 +60,7 @@ export function TerminalManager({ initialTerminais }: { initialTerminais: Termin
     }
   }
 
-  function handleDelete(terminal: TerminalItem) {
-    const confirmed = window.confirm(
-      `${messages.terminais.deleteConfirm}\n\n${terminal.nome}\n${terminal.hostname ?? terminal.identificador}`
-    );
-    if (!confirmed) return;
-
+  function deleteTerminal(terminal: TerminalItem) {
     setDeletingId(terminal.id);
     startTransition(async () => {
       try {
@@ -81,6 +76,15 @@ export function TerminalManager({ initialTerminais }: { initialTerminais: Termin
       } finally {
         setDeletingId(null);
       }
+    });
+  }
+
+  function handleDelete(terminal: TerminalItem) {
+    toast.warning("Remover terminal?", {
+      description: `${terminal.nome} (${terminal.hostname ?? terminal.identificador}) será removido permanentemente.`,
+      duration: 10_000,
+      action: { label: "Remover", onClick: () => deleteTerminal(terminal) },
+      cancel: { label: "Cancelar", onClick: () => undefined },
     });
   }
 

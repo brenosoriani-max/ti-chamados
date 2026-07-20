@@ -1,7 +1,6 @@
 import "reflect-metadata";
 import { redirect } from "next/navigation";
 import { Role } from "@/types";
-import { AppShell } from "@/components/app-shell";
 import { RemoteSessionViewer } from "@/components/remote-session-viewer";
 import { initializeDatabase, getRepository } from "@/lib/database";
 import { getSession } from "@/lib/auth";
@@ -19,17 +18,13 @@ export default async function RemoteTerminalPage({ params }: { params: Promise<{
 
   if (!terminal) {
     return (
-      <AppShell>
-        <div className="flex min-h-[50vh] items-center justify-center text-sm text-muted-foreground">
-          Terminal nao encontrado.
-        </div>
-      </AppShell>
+      <div className="flex min-h-[50vh] items-center justify-center text-sm text-muted-foreground">
+        Terminal nao encontrado.
+      </div>
     );
   }
 
   return (
-    <AppShell>
-      <RemoteSessionViewer terminal={JSON.parse(JSON.stringify(terminal))} />
-    </AppShell>
+    <RemoteSessionViewer terminal={JSON.parse(JSON.stringify(terminal))} />
   );
 }

@@ -167,8 +167,22 @@ export async function ensureUserTerminal(input: EnsureUserTerminalInput) {
     ...data,
     token: randomBytes(32).toString("hex"),
   });
-  await repo.save(created);
-  return { terminal: created, created: true as const };
+  try {
+    await repo.save(created);
+    return { terminal: created, created: true as const };
+  } catch (error) {
+    // Se dois logins do mesmo usuário ocorrerem em paralelo, a restrição
+    // única do banco pode rejeitar a segunda criação. Nesse caso, reutilizamos
+    // o terminal que foi salvo pela outra requisição em vez de exibir erro.
+    if (!isDuplicateEntryError(error)) throw error;
+
+    const existing = await findExistingUserTerminal(input.userId, identificador, input.email);
+    if (!existing) throw error;
+
+    Object.assign(existing, data);
+    await repo.save(existing);
+    return { terminal: existing, created: false as const };
+  }
 }
 
 async function findExistingUserTerminal(userId: string, identificador: string, email: string) {
@@ -213,6 +227,10 @@ function parseUserAgent(userAgent?: string | null) {
   if (/iPhone|iPad/i.test(userAgent)) return "iOS";
   if (/Linux/i.test(userAgent)) return "Linux";
   return "Web Browser";
+}
+
+function isDuplicateEntryError(error: unknown) {
+  return typeof error === "object" && error !== null && "code" in error && (error as { code?: string }).code === "ER_DUP_ENTRY";
 }
 
 export async function sweepStaleTerminals(timeoutMs: number) {

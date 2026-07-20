@@ -5,6 +5,7 @@ import { Archive, ArchiveRestore, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { archiveTicketAction, deleteTicketAction } from "@/app/actions";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 interface TicketArchiveButtonProps {
   ticketId: string;
@@ -20,22 +21,33 @@ export function TicketArchiveButton({ ticketId, isArchived }: TicketArchiveButto
       try {
         await archiveTicketAction(ticketId, !isArchived);
         router.refresh();
+        toast.success(isArchived ? "Chamado restaurado com sucesso." : "Chamado arquivado com sucesso.");
       } catch (error) {
         console.error("Erro ao alterar status de arquivamento:", error);
+        toast.error("Não foi possível atualizar o chamado. Tente novamente.");
+      }
+    });
+  }
+
+  function deleteTicket() {
+    startTransition(async () => {
+      try {
+        await deleteTicketAction(ticketId);
+        toast.success("Chamado excluído permanentemente.");
+        router.refresh();
+      } catch (error) {
+        console.error("Erro ao excluir chamado:", error);
+        toast.error("Não foi possível excluir o chamado. Tente novamente.");
       }
     });
   }
 
   function handleDelete() {
-    if (!window.confirm("Tem certeza que deseja excluir permanentemente este chamado?")) return;
-    
-    startTransition(async () => {
-      try {
-        await deleteTicketAction(ticketId);
-        router.refresh();
-      } catch (error) {
-        console.error("Erro ao excluir chamado:", error);
-      }
+    toast.warning("Excluir chamado permanentemente?", {
+      description: "Essa ação não pode ser desfeita.",
+      duration: 10_000,
+      action: { label: "Excluir", onClick: deleteTicket },
+      cancel: { label: "Cancelar", onClick: () => undefined },
     });
   }
 

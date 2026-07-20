@@ -80,7 +80,7 @@ export class Terminal {
   @Column({ type: "int", nullable: true })
   quantidadeMonitores?: number;
 
-  @Index()
+  @Index({ unique: true })
   @Column({ type: "varchar", length: 36, nullable: true })
   userId?: string;
 

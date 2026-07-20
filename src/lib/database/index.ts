@@ -124,6 +124,20 @@ async function ensureTerminalSchema(source: DataSource) {
       }
     }
 
+    // Um terminal de sessão web pertence a apenas um usuário. O índice
+    // único também evita duplicidade quando dois logins chegam ao mesmo tempo.
+    const indexes: Array<{ Key_name: string }> = await qr.query("SHOW INDEX FROM terminals");
+    if (!indexes.some((index) => index.Key_name === "UQ_terminals_userId")) {
+      try {
+        await qr.query("CREATE UNIQUE INDEX UQ_terminals_userId ON terminals (userId)");
+      } catch (error) {
+        console.warn(
+          "Não foi possível criar a restrição única de terminais por usuário:",
+          error instanceof Error ? error.message : error
+        );
+      }
+    }
+
     if (!byName.has("equipmentUuid")) {
       await qr.query("ALTER TABLE terminals ADD COLUMN equipmentUuid VARCHAR(191) NULL");
     } else if (!byName.get("equipmentUuid")!.includes("191")) {
