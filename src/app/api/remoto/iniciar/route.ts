@@ -58,6 +58,7 @@ export async function POST(request: NextRequest) {
     terminalId: terminal.id,
     usuarioId: usuario.id,
     usuarioNome: usuario.name,
+    monitorIndex: parsed.data.monitorIndex,
   });
   emitToSession(sessao.id, remoteSocketEvents.sessionState, {
     sessaoId: sessao.id,

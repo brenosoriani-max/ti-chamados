@@ -157,7 +157,7 @@ async function resolveTerminalId(sessaoId: string, payloadTerminalId?: string): 
 function bindTechnicianHandlers(socket: TechSocket) {
   socket.join("technicians");
 
-  socket.on("sessao:join", async (payload: { sessaoId: string }) => {
+  socket.on("sessao:join", async (payload: { sessaoId: string; monitorIndex?: number }) => {
     socket.join(`sessao:${payload.sessaoId}`);
 
     try {
@@ -169,6 +169,7 @@ function bindTechnicianHandlers(socket: TechSocket) {
           terminalId: sessao.terminalId,
           usuarioId: sessao.usuarioId,
           usuarioNome: sessao.usuario?.name ?? "Tecnico",
+          monitorIndex: payload.monitorIndex ?? 0,
         });
       }
     } catch (error) {

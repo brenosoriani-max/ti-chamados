@@ -31,10 +31,15 @@ function mapButton(button: string): Button {
   }
 }
 
+let remoteDisplayBounds = screen.getPrimaryDisplay().bounds;
+
+export function setRemoteDisplayBounds(bounds: Electron.Rectangle) {
+  remoteDisplayBounds = bounds;
+}
+
 function toScreenPoint(xPercent: number, yPercent: number): Point {
-  const primary = screen.getPrimaryDisplay();
-  const x = Math.round(xPercent * primary.size.width);
-  const y = Math.round(yPercent * primary.size.height);
+  const x = Math.round(remoteDisplayBounds.x + xPercent * remoteDisplayBounds.width);
+  const y = Math.round(remoteDisplayBounds.y + yPercent * remoteDisplayBounds.height);
   return new Point(x, y);
 }
 
@@ -158,8 +163,11 @@ async function startMouseLoop() {
       }
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 8));
+    if (!pendingMouseMove) break;
   }
+
+  mouseLoopStarted = false;
+  if (pendingMouseMove) void startMouseLoop();
 }
 
 export function handleMouseMove(payload: MouseMovePayload) {

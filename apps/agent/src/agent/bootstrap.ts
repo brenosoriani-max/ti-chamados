@@ -248,7 +248,7 @@ export async function startAgent() {
 
   socket.on(
     remoteSocketEvents.sessionCreate,
-    async (payload: { sessaoId: string }) => {
+    async (payload: { sessaoId: string; monitorIndex?: number }) => {
       if (!socket) {
         return;
       }
@@ -328,4 +328,3 @@ export async function startAgent() {
     );
   }, HEARTBEAT_INTERVAL_MS);
 }
-

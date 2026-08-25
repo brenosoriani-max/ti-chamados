@@ -47,8 +47,8 @@ export function Sidebar({ user }: SidebarProps) {
           <ShieldCheck className="h-5 w-5" />
         </div>
         <div className="flex flex-col">
-          <span className="font-bold text-sm tracking-tight text-foreground uppercase">TI-Chamados</span>
-          <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest -mt-1">Service Desk</span>
+          <span className="font-bold text-sm tracking-tight text-foreground uppercase">Contec-Chamados</span>
+          <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest -mt-1">Acesso Remoto</span>
         </div>
       </div>
 

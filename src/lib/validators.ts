@@ -69,7 +69,8 @@ export const terminalCreateSchema = z.object({
 export const terminalUpdateSchema = terminalCreateSchema.partial();
 
 export const remoteStartSchema = z.object({
-  terminalId: z.string().min(1)
+  terminalId: z.string().min(1),
+  monitorIndex: z.number().int().min(0).default(0),
 });
 
 export const remoteEndSchema = z.object({

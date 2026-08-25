@@ -3,6 +3,8 @@ import type { Socket } from "socket.io-client";
 import { remoteSocketEvents } from "../socket/client";
 import path from "path";
 import fs from "fs";
+import { screen } from "electron";
+import { setRemoteDisplayBounds } from "../input/controller";
 
 let peerWindow: BrowserWindow | null = null;
 let currentSocket: Socket | null = null;
@@ -13,7 +15,7 @@ let ipcOfferHandler: ((e: Electron.IpcMainEvent, d: any) => void) | null = null;
 let ipcCandidateHandler: ((e: Electron.IpcMainEvent, d: any) => void) | null = null;
 let ipcReadyHandler: ((e: Electron.IpcMainEvent) => void) | null = null;
 
-export async function startScreenShare(socket: Socket, payload: { sessaoId: string }) {
+export async function startScreenShare(socket: Socket, payload: { sessaoId: string; monitorIndex?: number }) {
   // Clean up any previous session
   if (peerWindow) stopScreenShare();
 
@@ -25,13 +27,20 @@ export async function startScreenShare(socket: Socket, payload: { sessaoId: stri
     types: ["screen"],
     thumbnailSize: { width: 0, height: 0 },
   });
-  const primarySource = sources[0];
-  if (!primarySource) {
+  const displays = screen.getAllDisplays();
+  const requestedIndex = Math.min(Math.max(payload.monitorIndex ?? 0, 0), displays.length - 1);
+  const selectedDisplay = displays[requestedIndex] ?? screen.getPrimaryDisplay();
+  const selectedSource =
+    sources.find((source) => source.display_id === String(selectedDisplay.id)) ??
+    sources[requestedIndex] ??
+    sources[0];
+  if (!selectedSource) {
     console.error("[agent-webrtc] No screen sources found.");
     return;
   }
-  const screenId = primarySource.id;
-  console.log("[agent-webrtc] Using screen source:", screenId);
+  const screenId = selectedSource.id;
+  setRemoteDisplayBounds(selectedDisplay.bounds);
+  console.log("[agent-webrtc] Using screen source:", screenId, "monitor:", requestedIndex);
 
   // --- Step 2: Register ALL IPC handlers BEFORE creating/loading the window ---
   // This eliminates the race condition where the renderer sends 'webrtc:offer'

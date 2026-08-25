@@ -18,6 +18,7 @@ type Terminal = {
   hostname?: string | null;
   usuarioLogado?: string | null;
   resolucaoTela?: string | null;
+  quantidadeMonitores?: number | null;
 };
 
 type RemoteSessionViewerProps = {
@@ -32,6 +33,7 @@ export function RemoteSessionViewer({ terminal }: RemoteSessionViewerProps) {
   const [sessaoId, setSessaoId] = useState<string | null>(null);
   const [status, setStatus] = useState<string>(messages.remote.ready);
   const [zoom, setZoom] = useState(1);
+  const [monitorIndex, setMonitorIndex] = useState(0);
   const isOnline = terminal.status === "ONLINE";
   const isActive = Boolean(sessaoId);
 
@@ -138,6 +140,7 @@ export function RemoteSessionViewer({ terminal }: RemoteSessionViewerProps) {
       },
       body: JSON.stringify({
         terminalId: terminal.id,
+        monitorIndex,
       }),
       });
 
@@ -154,7 +157,7 @@ export function RemoteSessionViewer({ terminal }: RemoteSessionViewerProps) {
 
       setSessaoId(sessionId);
       setupPeer(socket, sessionId);
-      socket.emit("sessao:join", { sessaoId: sessionId });
+      socket.emit("sessao:join", { sessaoId: sessionId, monitorIndex });
       setStatus(messages.remote.waitingAgent);
     } catch {
       setStatus(messages.remote.startFailed);
@@ -364,6 +367,18 @@ function sendMouseWheel(
             </div>
           </div>
           <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
+            {(terminal.quantidadeMonitores ?? 1) > 1 && !isActive && (
+              <select
+                aria-label="Monitor remoto"
+                value={monitorIndex}
+                onChange={(event) => setMonitorIndex(Number(event.target.value))}
+                className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+              >
+                {Array.from({ length: terminal.quantidadeMonitores ?? 1 }, (_, index) => (
+                  <option key={index} value={index}>Monitor {index + 1}</option>
+                ))}
+              </select>
+            )}
             <div className="flex items-center gap-2 rounded-lg bg-muted/60 px-3 py-2 text-xs">
               <span className={`h-2 w-2 rounded-full ${isActive ? "bg-emerald-500" : "bg-muted-foreground/50"}`} />
               <span className="text-muted-foreground">Sessão</span>
