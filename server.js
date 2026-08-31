@@ -28,11 +28,36 @@ app.prepare().then(async () => {
   setupRemoteSocket(io);
 
   io.on("connection", (socket) => {
-    socket.on("join-ticket", (ticketId) => socket.join(`ticket-${ticketId}`));
-    socket.on("leave-ticket", (ticketId) => socket.leave(`ticket-${ticketId}`));
-    socket.on("send-message", (data) => socket.to(`ticket-${data.ticketId}`).emit("receive-message", data));
-    socket.on("join-user", (userId) => socket.join(`user-${userId}`));
-    socket.on("send-notification", (data) => socket.to(`user-${data.userId}`).emit("receive-notification", data));
+    socket.on("join-ticket", (ticketId) => {
+      if (!socket.data?.user && !socket.role) return;
+      socket.join(`ticket-${ticketId}`);
+    });
+
+    socket.on("leave-ticket", (ticketId) => {
+      if (!socket.data?.user && !socket.role) return;
+      socket.leave(`ticket-${ticketId}`);
+    });
+
+    socket.on("send-message", (data) => {
+      if ((!socket.data?.user && !socket.role) || !data?.ticketId) return;
+      socket.to(`ticket-${data.ticketId}`).emit("receive-message", data);
+    });
+
+    socket.on("join-user", (userId) => {
+      if (!socket.data?.user) return;
+      const u = socket.data.user;
+      if (u.id === String(userId) || u.role === "ADMIN" || u.role === "TECNICO") {
+        socket.join(`user-${userId}`);
+      }
+    });
+
+    socket.on("send-notification", (data) => {
+      if (!socket.data?.user || !data?.userId) return;
+      const u = socket.data.user;
+      if (u.role === "ADMIN" || u.role === "TECNICO" || u.id === String(data.userId)) {
+        socket.to(`user-${data.userId}`).emit("receive-notification", data);
+      }
+    });
   });
 
   httpServer.once("error", (err) => {

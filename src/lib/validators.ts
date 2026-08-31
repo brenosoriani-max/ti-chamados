@@ -6,6 +6,12 @@ export const loginSchema = z.object({
   password: z.string().min(6)
 });
 
+export const registerSchema = z.object({
+  name: z.string().min(3).max(100),
+  email: z.string().email(),
+  password: z.string().min(6).max(100),
+});
+
 export const ticketCreateSchema = z.object({
   title: z.string().min(5).max(140),
   description: z.string().min(10),

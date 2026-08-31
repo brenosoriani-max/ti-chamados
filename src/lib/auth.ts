@@ -10,8 +10,14 @@ import { messages } from "@/lib/messages";
 const cookieName = "ti_chamados_token";
 
 function secret() {
-  const value = process.env.JWT_SECRET ?? "dev-secret-change-me";
-  return new TextEncoder().encode(value);
+  const value = process.env.JWT_SECRET;
+  const isWeak = !value || value === "abobrinha-frita" || value === "troque-por-um-segredo-longo-em-producao" || value === "dev-secret-change-me";
+
+  if (isWeak && process.env.NODE_ENV === "production") {
+    throw new Error("ERRO CRÍTICO DE SEGURANÇA: JWT_SECRET fraco ou padrão detectado em produção. Altere a variável no arquivo .env");
+  }
+
+  return new TextEncoder().encode(value ?? "dev-secret-change-me");
 }
 
 export type SessionUser = {

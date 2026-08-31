@@ -12,7 +12,7 @@ import { Equipment } from "@/entities/Equipment";
 import { Ticket } from "@/entities/Ticket";
 import { TicketHistory } from "@/entities/TicketHistory";
 import { Role, TicketStatus, HistoryAction } from "@/types";
-import { ticketCreateSchema } from "@/lib/validators";
+import { ticketCreateSchema, registerSchema } from "@/lib/validators";
 import { getDueDates, nextTicketNumber } from "@/lib/tickets";
 import { ensureUserTerminal } from "@/lib/remote/services/terminal-service";
 import { emitTerminalUpdated } from "@/lib/remote/socket-bridge";
@@ -21,9 +21,13 @@ import { messages } from "@/lib/messages";
 export async function registerAction(formData: FormData) {
   await initializeDatabase();
   
-  const name = String(formData.get("name"));
-  const email = String(formData.get("email"));
-  const password = String(formData.get("password"));
+  const parsed = registerSchema.parse({
+    name: formData.get("name"),
+    email: formData.get("email"),
+    password: formData.get("password"),
+  });
+
+  const { name, email, password } = parsed;
 
   const headersList = await headers();
   const ip = headersList.get("x-forwarded-for")?.split(",")[0]?.trim() || "127.0.0.1";

@@ -22,20 +22,29 @@ function jwtSecret() {
   return new TextEncoder().encode(process.env.JWT_SECRET ?? "dev-secret-change-me");
 }
 
-async function verifyTechnicianToken(token?: string) {
+async function verifyUserToken(token?: string) {
   if (!token) return null;
   try {
     const { payload } = await jwtVerify(token, jwtSecret());
-    const role = String(payload.role);
-    if (role !== "ADMIN" && role !== "TECNICO") return null;
     return {
       id: String(payload.id),
       name: String(payload.name),
-      role,
+      role: String(payload.role),
+      email: String(payload.email ?? ""),
     };
   } catch {
     return null;
   }
+}
+
+function parseCookieHeader(cookieHeader?: string) {
+  if (!cookieHeader) return {};
+  return Object.fromEntries(
+    cookieHeader.split(";").map((cookie) => {
+      const [key, ...v] = cookie.trim().split("=");
+      return [key, decodeURIComponent(v.join("="))];
+    })
+  );
 }
 
 function broadcastTerminal(terminal: {
@@ -231,13 +240,13 @@ export function setupRemoteSocket(io: Server) {
 
   io.use(async (socket, next) => {
     const auth = socket.handshake.auth as { token?: string; sessionToken?: string; role?: string };
-    const hasAuth = Boolean(auth.token || auth.sessionToken || auth.role);
-    if (!hasAuth) return next();
+    const cookies = parseCookieHeader(socket.handshake.headers.cookie);
+    const sessionToken = auth.sessionToken || cookies["ti_chamados_token"];
 
     try {
-      if (auth.role === "agent" || auth.token) {
+      if (auth.role === "agent" || (auth.token && !sessionToken)) {
         if (!auth.token && process.env.ALLOW_AGENT_AUTO_REGISTER !== "1") {
-          return next(new Error("Token obrigatorio"));
+          return next(new Error("Conexão recusada: Token de agente obrigatório"));
         }
         (socket as AgentSocket).role = "agent";
         (socket as AgentSocket).terminalToken = auth.token;
@@ -248,13 +257,19 @@ export function setupRemoteSocket(io: Server) {
         return next();
       }
 
-      const user = await verifyTechnicianToken(auth.sessionToken);
-      if (!user) return next(new Error("Nao autenticado"));
-      (socket as TechSocket).role = "technician";
-      (socket as TechSocket).userId = user.id;
+      const user = await verifyUserToken(sessionToken || auth.token);
+      if (!user) {
+        return next(new Error("Conexão recusada: Sessão não autenticada"));
+      }
+
+      socket.data.user = user;
+      if (user.role === "ADMIN" || user.role === "TECNICO") {
+        (socket as TechSocket).role = "technician";
+        (socket as TechSocket).userId = user.id;
+      }
       return next();
     } catch (error) {
-      next(error instanceof Error ? error : new Error("auth failed"));
+      return next(error instanceof Error ? error : new Error("Falha de autenticação no socket"));
     }
   });
 
