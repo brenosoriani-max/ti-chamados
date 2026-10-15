@@ -9,9 +9,22 @@ import { messages } from "@/lib/messages";
 interface TicketMessageFormProps {
   ticketId: string;
   canSendInternal?: boolean;
+  onMessageSent?: (payload: {
+    id: string;
+    body: string;
+    isInternal: boolean;
+    createdAt: string;
+    author: { id: string; name: string; avatarUrl?: string | null };
+  }) => void;
+  onTypingChange?: (isTyping: boolean) => void;
 }
 
-export function TicketMessageForm({ ticketId, canSendInternal = false }: TicketMessageFormProps) {
+export function TicketMessageForm({
+  ticketId,
+  canSendInternal = false,
+  onMessageSent,
+  onTypingChange,
+}: TicketMessageFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isInternal, setIsInternal] = useState(false);
@@ -19,9 +32,9 @@ export function TicketMessageForm({ ticketId, canSendInternal = false }: TicketM
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    
+  async function handleSubmit(e?: React.FormEvent<HTMLFormElement>) {
+    e?.preventDefault();
+
     try {
       setIsLoading(true);
       setError(null);
@@ -49,13 +62,15 @@ export function TicketMessageForm({ ticketId, canSendInternal = false }: TicketM
         throw new Error(errorData.error || messages.tickets.commentError);
       }
 
+      const payload = await response.json();
       setMessage("");
       setSuccess(true);
       setIsInternal(false);
-      
+      onTypingChange?.(false);
+      onMessageSent?.(payload);
+
       setTimeout(() => {
         setSuccess(false);
-        window.location.reload();
       }, 1000);
     } catch (err) {
       setError(err instanceof Error ? err.message : messages.tickets.commentError);
@@ -72,7 +87,17 @@ export function TicketMessageForm({ ticketId, canSendInternal = false }: TicketM
             placeholder="Escrever resposta..."
             className="min-h-[140px] rounded-xl border-border/60 bg-background shadow-inner transition-all duration-300 group-focus-within:ring-primary/20"
             value={message}
-            onChange={(e) => setMessage(e.target.value)}
+            onChange={(e) => {
+              setMessage(e.target.value);
+              onTypingChange?.(e.target.value.trim().length > 0);
+            }}
+            onBlur={() => onTypingChange?.(false)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && e.shiftKey) {
+                e.preventDefault();
+                void handleSubmit();
+              }
+            }}
             disabled={isLoading}
             required
           />
@@ -80,13 +105,13 @@ export function TicketMessageForm({ ticketId, canSendInternal = false }: TicketM
             <Send className="h-4 w-4 text-primary" />
           </div>
         </div>
-        
+
         {error && (
           <div className="text-[10px] font-bold uppercase tracking-widest text-red-400 bg-red-400/5 border border-red-400/10 rounded-xl px-4 py-3">
             {error}
           </div>
         )}
-        
+
         {success && (
           <div className="text-[10px] font-bold uppercase tracking-widest text-emerald-400 bg-emerald-400/5 border border-emerald-400/10 rounded-xl px-4 py-3">
             ✓ Mensagem enviada com sucesso

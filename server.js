@@ -31,11 +31,15 @@ app.prepare().then(async () => {
     socket.on("join-ticket", (ticketId) => {
       if (!socket.data?.user && !socket.role) return;
       socket.join(`ticket-${ticketId}`);
+      if (socket.data?.user?.role === "ADMIN" || socket.data?.user?.role === "TECNICO") {
+        socket.join(`ticket-${ticketId}:staff`);
+      }
     });
 
     socket.on("leave-ticket", (ticketId) => {
       if (!socket.data?.user && !socket.role) return;
       socket.leave(`ticket-${ticketId}`);
+      socket.leave(`ticket-${ticketId}:staff`);
     });
 
     socket.on("send-message", (data) => {
@@ -57,6 +61,15 @@ app.prepare().then(async () => {
       if (u.role === "ADMIN" || u.role === "TECNICO" || u.id === String(data.userId)) {
         socket.to(`user-${data.userId}`).emit("receive-notification", data);
       }
+    });
+
+    socket.on("ticket:typing", (data) => {
+      if (!data?.ticketId || !data?.userName) return;
+      socket.to(`ticket-${data.ticketId}`).emit("ticket:typing", {
+        ticketId: data.ticketId,
+        userName: data.userName,
+        isTyping: Boolean(data.isTyping),
+      });
     });
   });
 

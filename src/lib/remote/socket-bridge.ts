@@ -56,3 +56,9 @@ export function emitTerminalUpdated(payload: unknown) {
   bridge.ioInstance.to("technicians").emit("terminal:updated", payload);
   bridge.ioInstance.emit("terminal:updated", payload);
 }
+
+export function emitTicketMessage(ticketId: string, payload: unknown, isInternal = false) {
+  if (!bridge.ioInstance) return;
+  const room = isInternal ? `ticket-${ticketId}:staff` : `ticket-${ticketId}`;
+  bridge.ioInstance.to(room).emit("ticket:message", payload);
+}

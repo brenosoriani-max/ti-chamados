@@ -8,6 +8,7 @@ import { Ticket } from "@/entities/Ticket";
 import { TicketMessage } from "@/entities/TicketMessage";
 import { TicketHistory } from "@/entities/TicketHistory";
 import { messages } from "@/lib/messages";
+import { emitTicketMessage } from "@/lib/remote/socket-bridge";
 
 export async function POST(
   request: NextRequest,
@@ -71,7 +72,20 @@ export async function POST(
       relations: ["author"],
     });
 
-    return NextResponse.json(saved, { status: 201 });
+    const payload = {
+      id: saved!.id,
+      body: saved!.body,
+      isInternal: saved!.isInternal,
+      createdAt: saved!.createdAt.toISOString(),
+      author: {
+        id: saved!.author.id,
+        name: saved!.author.name,
+        avatarUrl: saved!.author.avatarUrl ?? null,
+      },
+    };
+    emitTicketMessage(id, payload, saved!.isInternal);
+
+    return NextResponse.json(payload, { status: 201 });
   } catch {
     return NextResponse.json({ error: messages.tickets.commentError }, { status: 500 });
   }

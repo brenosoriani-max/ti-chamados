@@ -4,15 +4,25 @@ import { Role } from "@/types";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { PriorityBadge, StatusBadge } from "@/components/status-badge";
-import { TicketMessageForm } from "@/components/ticket-message-form";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { initializeDatabase, getRepository } from "@/lib/database";
 import { getSession } from "@/lib/auth";
-import { formatDateTime, cn } from "@/lib/utils";
+import { formatDateTime } from "@/lib/utils";
 import { Ticket } from "@/entities/Ticket";
 import { TicketMessage } from "@/entities/TicketMessage";
 import { TicketHistory } from "@/entities/TicketHistory";
+import { TicketDiscussion } from "@/components/ticket-discussion";
+
+function formatHistoryBlock(date: Date) {
+  const today = new Date();
+  const normalizedDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const normalizedToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const diffDays = Math.round((normalizedToday.getTime() - normalizedDate.getTime()) / 86400000);
+
+  if (diffDays === 0) return "Hoje";
+  if (diffDays === 1) return "Ontem";
+  return new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium" }).format(date);
+}
 
 export default async function TicketDetailPage({ params }: { params: Promise<{ id: string }> }) {
   await initializeDatabase();
@@ -40,6 +50,12 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
   const visibleMessages = ticket.messages.filter(
     (message: TicketMessage) => !message.isInternal || session.role !== Role.CLIENTE
   );
+
+  const historyByDay = ticket.history.reduce<Record<string, TicketHistory[]>>((acc, item) => {
+    const label = formatHistoryBlock(new Date(item.createdAt));
+    acc[label] = acc[label] ? [...acc[label], item] : [item];
+    return acc;
+  }, {});
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6">
@@ -87,33 +103,26 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
                   Discussão
                 </CardTitle>
               </CardHeader>
-              <CardContent className="pt-6 space-y-6">
-                <div className="space-y-6 max-h-[500px] overflow-y-auto pr-2 scrollbar-hide">
-                  {visibleMessages.length > 0 ? (
-                    visibleMessages.map((message: TicketMessage) => (
-                      <div key={message.id} className={cn("space-y-2", message.isInternal && "bg-amber-500/5 p-4 rounded-xl border border-amber-500/10")}>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="h-6 w-6 rounded-full bg-secondary flex items-center justify-center text-[10px] font-bold">
-                              {message.author.name.charAt(0)}
-                            </div>
-                            <span className="text-xs font-bold">{message.author.name}</span>
-                            {message.isInternal && <Badge variant="warning" className="text-[8px] h-4">INTERNO</Badge>}
-                          </div>
-                          <span className="text-[9px] text-muted-foreground font-medium">{formatDateTime(message.createdAt)}</span>
-                        </div>
-                        <p className="text-xs text-foreground/80 leading-relaxed font-medium pl-8">{message.body}</p>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="py-10 text-center opacity-30">
-                      <p className="text-xs font-bold uppercase tracking-widest">Sem mensagens</p>
-                    </div>
-                  )}
-                </div>
-                <div className="pt-4 border-t border-border/40">
-                  <TicketMessageForm ticketId={ticket.id} canSendInternal={session.role !== Role.CLIENTE} />
-                </div>
+              <CardContent className="pt-6">
+                <TicketDiscussion
+                  ticketId={ticket.id}
+                  currentUserId={session.id}
+                  currentUserName={session.name}
+                  currentUserAvatarUrl={undefined}
+                  initialMessages={visibleMessages.map((message: TicketMessage) => ({
+                    id: message.id,
+                    body: message.body,
+                    isInternal: message.isInternal,
+                    createdAt: message.createdAt.toISOString(),
+                    author: {
+                      id: message.author.id,
+                      name: message.author.name,
+                      avatarUrl: message.author.avatarUrl ?? null,
+                    },
+                  }))}
+                  canSendInternal={session.role !== Role.CLIENTE}
+                  userRole={session.role}
+                />
               </CardContent>
             </Card>
           </div>
@@ -165,15 +174,24 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
               </CardHeader>
               <CardContent className="p-6 pt-2">
                 <div className="space-y-4">
-                  {ticket.history.slice(-3).map((item: TicketHistory) => (
-                    <div key={item.id} className="text-[10px] space-y-1">
-                      <div className="flex justify-between font-bold">
-                        <span className="text-primary/70">{item.action.replace('_', ' ')}</span>
-                        <span className="text-muted-foreground/50">{new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                  {Object.entries(historyByDay)
+                    .slice(-3)
+                    .map(([label, items]) => (
+                      <div key={label} className="space-y-2">
+                        <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">{label}</div>
+                        <div className="space-y-3">
+                          {items.slice(-3).map((item: TicketHistory) => (
+                            <div key={item.id} className="text-[10px] space-y-1">
+                              <div className="flex justify-between font-bold">
+                                <span className="text-primary/70">{item.action.replace('_', ' ')}</span>
+                                <span className="text-muted-foreground/50">{new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                              </div>
+                              <p className="text-muted-foreground uppercase truncate">POR {item.actor?.name.split(' ')[0] ?? "SISTEMA"}</p>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                      <p className="text-muted-foreground uppercase truncate">POR {item.actor?.name.split(' ')[0] ?? "SISTEMA"}</p>
-                    </div>
-                  ))}
+                    ))}
                 </div>
               </CardContent>
             </Card>
