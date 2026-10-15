@@ -65,12 +65,12 @@ export function TicketMessageForm({ ticketId, canSendInternal = false }: TicketM
   }
 
   return (
-    <form onSubmit={handleSubmit} ref={formRef} className="space-y-4 pt-6 border-t border-white/5">
+    <form onSubmit={handleSubmit} ref={formRef} className="space-y-4 border-t border-border/60 pt-6">
       <div className="space-y-4">
         <div className="relative group">
           <Textarea
             placeholder="Escrever resposta..."
-            className="group-focus-within:ring-primary/20 transition-all duration-300 shadow-inner min-h-[160px]"
+            className="min-h-[140px] rounded-xl border-border/60 bg-background shadow-inner transition-all duration-300 group-focus-within:ring-primary/20"
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             disabled={isLoading}
@@ -94,7 +94,7 @@ export function TicketMessageForm({ ticketId, canSendInternal = false }: TicketM
         )}
 
         {canSendInternal && (
-          <div className={`flex items-center justify-between rounded-2xl border transition-all duration-300 p-4 ${isInternal ? 'border-amber-500/30 bg-amber-500/5' : 'border-white/5 bg-white/5'}`}>
+          <div className={`flex items-center justify-between rounded-xl border p-4 transition-all duration-300 ${isInternal ? 'border-amber-500/30 bg-amber-500/5' : 'border-border/60 bg-muted/30'}`}>
             <div className="flex items-center gap-3">
               <div className={`h-8 w-8 rounded-xl flex items-center justify-center transition-colors ${isInternal ? 'bg-amber-500/20 text-amber-500' : 'bg-muted text-muted-foreground'}`}>
                 {isInternal ? '🔒' : '🌐'}
@@ -117,7 +117,7 @@ export function TicketMessageForm({ ticketId, canSendInternal = false }: TicketM
 
       <div className="flex items-center justify-between gap-4">
         <p className="text-[10px] text-muted-foreground font-medium italic">Shift + Enter para enviar rapidamente</p>
-        <Button type="submit" disabled={isLoading} className="rounded-full px-8 premium-gradient shadow-xl shadow-teal-500/10 hover:scale-105 active:scale-95 transition-all gap-2">
+        <Button type="submit" disabled={isLoading} className="h-10 rounded-xl px-5 shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] active:scale-[0.98]">
           {isLoading ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (

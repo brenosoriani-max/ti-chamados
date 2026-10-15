@@ -3,7 +3,6 @@ import { Info, MessageSquare, History, Smartphone, ShieldCheck, Clock, User, Arr
 import { Role } from "@/types";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { AppShell } from "@/components/app-shell";
 import { PriorityBadge, StatusBadge } from "@/components/status-badge";
 import { TicketMessageForm } from "@/components/ticket-message-form";
 import { Badge } from "@/components/ui/badge";
@@ -35,7 +34,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
   }
 
   if (!ticket) {
-    return <AppShell><div className="flex flex-col items-center justify-center py-20"><p className="text-muted-foreground">Chamado não encontrado.</p></div></AppShell>;
+    return <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-border py-20"><p className="text-sm font-medium text-muted-foreground">Chamado não encontrado.</p></div>;
   }
 
   const visibleMessages = ticket.messages.filter(
@@ -43,25 +42,24 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
   );
 
   return (
-    <AppShell>
-      <div className="max-w-5xl w-full mx-auto space-y-8">
-        <div className="flex items-center gap-4">
-          <Link href="/tickets" className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground mr-2">
+    <div className="mx-auto w-full max-w-6xl space-y-6">
+        <header className="flex items-start gap-4 rounded-3xl border border-border/60 bg-card px-5 py-5 shadow-sm sm:px-7">
+          <Link href="/tickets" className="mt-0.5 rounded-xl border border-border/60 p-2.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
             <ArrowLeft className="h-4 w-4" />
           </Link>
           <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded uppercase">#{ticket.protocolo}</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-md bg-primary/10 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-primary">#{ticket.protocolo}</span>
               <StatusBadge status={ticket.status} />
             </div>
-            <h1 className="text-2xl font-bold tracking-tight">{ticket.titulo}</h1>
+            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{ticket.titulo}</h1>
           </div>
-        </div>
+        </header>
 
-        <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
-          <div className="space-y-8">
-            <Card className="border-none shadow-sm bg-card/50">
-              <CardHeader className="border-b border-border/40 pb-4">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="space-y-6">
+            <Card className="overflow-hidden rounded-3xl border-border/60 bg-card shadow-sm">
+              <CardHeader className="border-b border-border/60 pb-4">
                 <CardTitle className="text-sm font-bold flex items-center gap-2">
                   <Info className="h-4 w-4 text-primary" />
                   Descrição
@@ -70,11 +68,11 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
               <CardContent className="pt-6">
                 <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">{ticket.descricao}</p>
                 <div className="mt-6 grid grid-cols-2 gap-4">
-                  <div className="p-3 rounded-lg bg-muted/30 border border-border/40">
+                  <div className="rounded-xl border border-border/60 bg-muted/30 p-4">
                     <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Categoria</p>
                     <p className="text-xs font-semibold">{ticket.category.name}</p>
                   </div>
-                  <div className="p-3 rounded-lg bg-muted/30 border border-border/40">
+                  <div className="rounded-xl border border-border/60 bg-muted/30 p-4">
                     <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Prioridade</p>
                     <PriorityBadge priority={ticket.prioridade} />
                   </div>
@@ -82,8 +80,8 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
               </CardContent>
             </Card>
 
-            <Card className="border-none shadow-sm bg-card/50">
-              <CardHeader className="border-b border-border/40 pb-4">
+            <Card className="overflow-hidden rounded-3xl border-border/60 bg-card shadow-sm">
+              <CardHeader className="border-b border-border/60 pb-4">
                 <CardTitle className="text-sm font-bold flex items-center gap-2">
                   <MessageSquare className="h-4 w-4 text-primary" />
                   Discussão
@@ -121,7 +119,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
           </div>
 
           <aside className="space-y-6">
-            <Card className="border-none shadow-sm bg-card/50 overflow-hidden">
+            <Card className="overflow-hidden rounded-3xl border-border/60 bg-card shadow-sm">
               <div className="h-1 w-full bg-primary" />
               <CardContent className="p-6 space-y-6">
                 <div className="space-y-4">
@@ -159,7 +157,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
               </CardContent>
             </Card>
 
-            <Card className="border-none shadow-sm bg-card/50">
+            <Card className="rounded-3xl border-border/60 bg-card shadow-sm">
               <CardHeader className="pb-2">
                 <CardTitle className="text-xs font-bold flex items-center gap-2 uppercase tracking-widest text-muted-foreground">
                   <History className="h-3 w-3" /> Log de Eventos
@@ -181,7 +179,6 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
             </Card>
           </aside>
         </div>
-      </div>
-    </AppShell>
+    </div>
   );
 }

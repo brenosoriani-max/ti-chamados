@@ -109,7 +109,9 @@ export async function logoutAction() {
   redirect("/login");
 }
 
-export async function createTicketAction(formData: FormData) {
+type CreateTicketState = { error?: string };
+
+export async function createTicketAction(_previousState: CreateTicketState, formData: FormData): Promise<CreateTicketState> {
   await initializeDatabase();
   
   const session = await getSession();
@@ -124,7 +126,7 @@ export async function createTicketAction(formData: FormData) {
     .map((tag) => tag.trim())
     .filter(Boolean);
 
-  const parsed = ticketCreateSchema.parse({
+  const parsed = ticketCreateSchema.safeParse({
     title: formData.get("title"),
     description: formData.get("description"),
     categoryId: formData.get("categoryId"),
@@ -133,7 +135,11 @@ export async function createTicketAction(formData: FormData) {
     tags: parsedTags,
   });
 
-  const dueDates = await getDueDates(parsed.priority);
+  if (!parsed.success) {
+    return { error: "Preencha o resumo, os detalhes (mínimo de 10 caracteres) e a área afetada." };
+  }
+
+  const dueDates = await getDueDates(parsed.data.priority);
   const headersList = await headers();
   const ip = headersList.get("x-forwarded-for")?.split(",")[0] || "unknown";
 
@@ -142,11 +148,11 @@ export async function createTicketAction(formData: FormData) {
 
   const ticket = ticketRepository.create({
     protocolo: await nextTicketNumber(),
-    titulo: parsed.title,
-    descricao: parsed.description,
-    categoryId: parsed.categoryId,
-    subCategoryId: parsed.subCategoryId || undefined,
-    prioridade: parsed.priority,
+    titulo: parsed.data.title,
+    descricao: parsed.data.description,
+    categoryId: parsed.data.categoryId,
+    subCategoryId: parsed.data.subCategoryId || undefined,
+    prioridade: parsed.data.priority,
     status: TicketStatus.ABERTO,
     clienteId: session.id,
     creatorIp: ip,
