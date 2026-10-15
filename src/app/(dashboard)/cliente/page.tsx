@@ -23,15 +23,7 @@ export default async function ClientePage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-7">
-      <header className="relative overflow-hidden rounded-3xl border border-sky-200/80 bg-gradient-to-br from-sky-50 via-white to-blue-100 px-6 py-7 text-slate-950 shadow-xl shadow-slate-950/10 sm:px-8 sm:py-9 dark:border-white/10 dark:bg-[#030817] dark:text-white dark:shadow-black/30">
-        <div className="pointer-events-none absolute -right-12 -top-20 h-64 w-64 rounded-full bg-primary/20 blur-3xl dark:bg-primary/35" />
-        <div className="pointer-events-none absolute bottom-0 right-1/4 h-24 w-24 rounded-full bg-sky-400/25 blur-2xl dark:bg-sky-400/20" />
-        <div className="relative max-w-2xl">
-          <div className="mb-4 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-sky-700 dark:text-sky-300"><Sparkles className="h-4 w-4" /> Central de ajuda</div>
-          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Olá, {session.name.split(" ")[0]}. Como podemos ajudar?</h1>
-          <p className="mt-3 max-w-xl text-sm leading-6 text-slate-600 dark:text-slate-300">Descreva o que aconteceu e nossa equipe acompanhará sua solicitação até a resolução.</p>
-        </div>
-      </header>
+      
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <Card className="overflow-hidden border border-border/60 bg-card shadow-sm"><CardContent className="p-0"><div className="border-b border-border/60 px-6 py-5 sm:px-7"><div className="flex items-start gap-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><FileText className="h-5 w-5" /></div><div><h2 className="font-bold tracking-tight">Abrir um novo chamado</h2><p className="mt-1 text-xs leading-5 text-muted-foreground">Quanto mais detalhes você informar, mais rápido poderemos ajudar.</p></div></div></div><div className="p-6 sm:p-7"><CreateTicketForm categories={categories} /></div></CardContent></Card>
