@@ -85,9 +85,17 @@ export async function POST(request: NextRequest) {
 
   await setAuthCookie(token);
 
+  const redirectUrl =
+    user.role === Role.CLIENTE
+      ? "/cliente"
+      : user.role === Role.ADMIN
+      ? "/admin"
+      : "/suporte";
+
   if (contentType.includes("application/json")) {
     return NextResponse.json({
       ok: true,
+      redirectUrl,
       user: {
         id: user.id,
         name: user.name,
@@ -95,13 +103,6 @@ export async function POST(request: NextRequest) {
       },
     });
   }
-
-  const redirectUrl =
-    user.role === Role.CLIENTE
-      ? "/cliente"
-      : user.role === Role.ADMIN
-      ? "/admin"
-      : "/suporte";
 
   return NextResponse.redirect(new URL(redirectUrl, request.url), 303);
 }

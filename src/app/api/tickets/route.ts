@@ -18,16 +18,23 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const q = searchParams.get("q") ?? undefined;
     const status = searchParams.get("status") ?? undefined;
-    const page = Math.max(Number(searchParams.get("page") ?? 1), 1);
-    const take = Math.min(Number(searchParams.get("take") ?? 20), 100);
+    const requestedPage = Number(searchParams.get("page") ?? 1);
+    const requestedTake = Number(searchParams.get("take") ?? 20);
+    const page = Number.isFinite(requestedPage) ? Math.max(Math.floor(requestedPage), 1) : 1;
+    const take = Number.isFinite(requestedTake) ? Math.min(Math.max(Math.floor(requestedTake), 1), 100) : 20;
 
     const ticketRepository = getRepository(Ticket);
     const qb = ticketRepository
       .createQueryBuilder("ticket")
-      .leftJoinAndSelect("ticket.cliente", "cliente")
-      .leftJoinAndSelect("ticket.responsavel", "responsavel")
-      .leftJoinAndSelect("ticket.category", "category")
-      .leftJoinAndSelect("ticket.subCategory", "subCategory");
+      .leftJoin("ticket.cliente", "cliente")
+      .leftJoin("ticket.responsavel", "responsavel")
+      .leftJoin("ticket.category", "category")
+      .leftJoin("ticket.subCategory", "subCategory")
+      .addSelect([
+        "cliente.id", "cliente.name", "cliente.email",
+        "responsavel.id", "responsavel.name", "responsavel.email",
+        "category.id", "category.name", "subCategory.id", "subCategory.name",
+      ]);
 
     if (session.role === Role.CLIENTE) {
       qb.andWhere("ticket.clienteId = :clienteId", { clienteId: session.id });

@@ -18,16 +18,22 @@ import { ensureUserTerminal } from "@/lib/remote/services/terminal-service";
 import { emitTerminalUpdated } from "@/lib/remote/socket-bridge";
 import { messages } from "@/lib/messages";
 
-export async function registerAction(formData: FormData) {
+type RegisterState = { error?: string };
+
+export async function registerAction(_previousState: RegisterState, formData: FormData): Promise<RegisterState> {
   await initializeDatabase();
   
-  const parsed = registerSchema.parse({
+  const parsed = registerSchema.safeParse({
     name: formData.get("name"),
     email: formData.get("email"),
     password: formData.get("password"),
   });
 
-  const { name, email, password } = parsed;
+  if (!parsed.success) {
+    return { error: "Revise seus dados e preencha todos os campos corretamente." };
+  }
+
+  const { name, email, password } = parsed.data;
 
   const headersList = await headers();
   const ip = headersList.get("x-forwarded-for")?.split(",")[0]?.trim() || "127.0.0.1";
@@ -39,15 +45,24 @@ export async function registerAction(formData: FormData) {
   const userRepository = getRepository(User);
   const equipmentRepository = getRepository(Equipment);
 
-  const user = userRepository.create({
-    name,
-    email,
-    passwordHash: hashedPassword,
-    role: Role.CLIENTE,
-    isActive: true,
-    lastIp: ip,
-  });
-  await userRepository.save(user);
+  let user: User;
+  try {
+    user = userRepository.create({
+      name,
+      email,
+      passwordHash: hashedPassword,
+      role: Role.CLIENTE,
+      isActive: true,
+      lastIp: ip,
+    });
+    await userRepository.save(user);
+  } catch (error: unknown) {
+    if ((error as { code?: string }).code === "ER_DUP_ENTRY") {
+      return { error: "Já existe uma conta cadastrada com este e-mail." };
+    }
+    console.error("Falha ao cadastrar usuário:", error);
+    return { error: "Não foi possível criar sua conta. Tente novamente." };
+  }
 
   const equipment = await equipmentRepository.findOne({
     where: { ipAddress: ip },

@@ -40,9 +40,10 @@ export function buildTicketQuery(filter: TicketFilter) {
   const repo = getRepository(Ticket);
   const qb = repo
     .createQueryBuilder("ticket")
-    .leftJoinAndSelect("ticket.cliente", "cliente")
-    .leftJoinAndSelect("ticket.category", "category")
-    .leftJoinAndSelect("ticket.equipment", "equipment");
+    .leftJoin("ticket.cliente", "cliente")
+    .leftJoin("ticket.category", "category")
+    .leftJoin("ticket.equipment", "equipment")
+    .addSelect(["cliente.id", "cliente.name", "category.id", "category.name", "equipment.id", "equipment.machineName", "equipment.hostname", "equipment.ipAddress"]);
 
   if (filter.isArchived !== undefined) {
     qb.andWhere("ticket.isArchived = :isArchived", { isArchived: filter.isArchived });

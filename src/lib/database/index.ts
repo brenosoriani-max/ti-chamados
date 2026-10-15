@@ -54,6 +54,11 @@ function createDataSource() {
     database: process.env.DB_NAME || "ti_chamados",
     synchronize: false,
     logging: process.env.NODE_ENV === "development" ? ["error"] : ["error"],
+    extra: {
+      connectionLimit: Number(process.env.DB_POOL_SIZE ?? 10),
+      waitForConnections: true,
+      queueLimit: 0,
+    },
     entities: [...ENTITIES],
     subscribers: [],
     migrations: [],
