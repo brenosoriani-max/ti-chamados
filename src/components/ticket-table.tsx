@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { PriorityBadge, StatusBadge } from "@/components/status-badge";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
@@ -23,7 +26,47 @@ type TicketRow = {
 
 export function TicketTable({ tickets, userRole, userId }: { tickets: any[], userRole?: string, userId?: string }) {
   const isStaff = userRole === "TECNICO" || userRole === "ADMIN";
-  
+  const [unreadTicketIds, setUnreadTicketIds] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (!userId) {
+      setUnreadTicketIds({});
+      return;
+    }
+
+    const nextUnread: Record<string, boolean> = {};
+
+    tickets.forEach((ticket) => {
+      const raw = window.localStorage.getItem(`ticket:unread:${ticket.id}:${userId}`);
+      nextUnread[ticket.id] = raw === "true";
+    });
+
+    setUnreadTicketIds(nextUnread);
+  }, [tickets, userId]);
+
+  // Also fetch server-side unread state for these tickets and merge
+  useEffect(() => {
+    if (!userId || tickets.length === 0) return;
+
+    const ticketIds = tickets.map((t) => t.id);
+
+    (async () => {
+      try {
+        const res = await fetch(`/api/tickets/unread`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ticketIds }),
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        const serverUnread: Record<string, boolean> = data.unread || {};
+        setUnreadTicketIds((current) => ({ ...current, ...serverUnread }));
+      } catch {
+        // ignore network errors
+      }
+    })();
+  }, [tickets, userId]);
+
   // Header should always show Actions if user is logged in, 
   // or we can just always show it and handle per-row
   const showActionsHeader = true; 
@@ -45,6 +88,7 @@ export function TicketTable({ tickets, userRole, userId }: { tickets: any[], use
             {tickets.map((ticket) => {
               const hours = hoursUntil(ticket.slaDueAt);
               const isOverdue = hours < 0;
+              const hasUnread = !!userId && unreadTicketIds[ticket.id];
               return (
                 <TR key={ticket.id} className="group border-b border-border/20 last:border-0 hover:bg-muted/20 transition-colors">
                   <TD className="py-4 px-6 font-bold text-xs">
@@ -58,7 +102,14 @@ export function TicketTable({ tickets, userRole, userId }: { tickets: any[], use
                     </div>
                   </TD>
                   <TD className="py-4">
-                    <p className="font-bold text-sm tracking-tight">{ticket.title}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-bold text-sm tracking-tight">{ticket.title}</p>
+                      {hasUnread && (
+                        <span className="inline-flex items-center rounded-full border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.14em] text-blue-600 dark:text-blue-300">
+                          Nova
+                        </span>
+                      )}
+                    </div>
                     <div className="flex items-center gap-2 mt-1">
                       <span className="text-[10px] font-medium text-muted-foreground/60">{ticket.category?.name ?? "Geral"}</span>
                       <span className="text-[10px] text-muted-foreground/30">•</span>

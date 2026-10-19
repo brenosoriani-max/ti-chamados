@@ -2,6 +2,7 @@
 
 import { Send, Loader2 } from "lucide-react";
 import { useRef, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { messages } from "@/lib/messages";
@@ -41,7 +42,9 @@ export function TicketMessageForm({
       setSuccess(false);
 
       if (!message.trim()) {
-        setError(messages.tickets.invalidComment);
+        const validationError = messages.tickets.invalidComment;
+        setError(validationError);
+        toast.error(validationError);
         setIsLoading(false);
         return;
       }
@@ -59,7 +62,8 @@ export function TicketMessageForm({
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || messages.tickets.commentError);
+        const failMessage = errorData.error || messages.tickets.commentError;
+        throw new Error(failMessage);
       }
 
       const payload = await response.json();
@@ -68,12 +72,15 @@ export function TicketMessageForm({
       setIsInternal(false);
       onTypingChange?.(false);
       onMessageSent?.(payload);
+      toast.success("Mensagem enviada com sucesso.");
 
       setTimeout(() => {
         setSuccess(false);
-      }, 1000);
+      }, 1200);
     } catch (err) {
-      setError(err instanceof Error ? err.message : messages.tickets.commentError);
+      const failMessage = err instanceof Error ? err.message : messages.tickets.commentError;
+      setError(failMessage);
+      toast.error(failMessage);
     } finally {
       setIsLoading(false);
     }

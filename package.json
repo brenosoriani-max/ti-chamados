@@ -3,9 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "tsx server.js",
+    "dev": "tsx server.ts",
+    "dev:try": "tsx scripts/start-dev.ts",
     "build": "next build",
-    "start": "tsx server.js",
+    "start": "tsx server.ts",
     "agent:dev": "npm run dev --prefix apps/agent",
     "agent:build": "npm run build --prefix apps/agent",
     "lint": "next lint",

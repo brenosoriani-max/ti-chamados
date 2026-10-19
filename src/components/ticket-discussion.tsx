@@ -43,6 +43,7 @@ export function TicketDiscussion({
   const socketRef = useRef<Socket | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const storageKey = `ticket:read:${ticketId}:${currentUserId}`;
+  const unreadFlagKey = `ticket:unread:${ticketId}:${currentUserId}`;
   const [messages, setMessages] = useState<TicketMessagePayload[]>(() =>
     [...initialMessages].sort(
       (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
@@ -58,6 +59,8 @@ export function TicketDiscussion({
       return [];
     }
   });
+
+  const [persistedReadIds, setPersistedReadIds] = useState<string[]>([]);
 
   const lastOwnMessageId = useMemo(
     () => [...messages].reverse().find((message) => message.author.id === currentUserId)?.id,
@@ -98,6 +101,81 @@ export function TicketDiscussion({
     return () => window.clearTimeout(timeoutId);
   }, [messages, currentUserId, readMessageIds]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const hasUnreadMessages = messages.some(
+      (message) => message.author.id !== currentUserId && !readMessageIds.includes(message.id)
+    );
+
+    if (hasUnreadMessages) {
+      window.localStorage.setItem(unreadFlagKey, "true");
+      return;
+    }
+
+    window.localStorage.setItem(unreadFlagKey, "false");
+  }, [messages, currentUserId, readMessageIds, unreadFlagKey]);
+
+  // Persist newly-read message ids to the server
+  useEffect(() => {
+    const newlyRead = readMessageIds.filter((id) => !persistedReadIds.includes(id));
+    if (newlyRead.length === 0) return;
+
+    const controller = new AbortController();
+
+    (async () => {
+      try {
+        await fetch(`/api/tickets/${ticketId}/reads`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ messageIds: newlyRead }),
+          signal: controller.signal,
+        });
+
+        setPersistedReadIds((current) => Array.from(new Set([...current, ...newlyRead])));
+      } catch {
+        // ignore network errors, we'll retry on next change
+      }
+    })();
+
+    return () => controller.abort();
+  }, [readMessageIds, persistedReadIds, ticketId]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const hasUnreadMessages = messages.some(
+      (message) => message.author.id !== currentUserId && !readMessageIds.includes(message.id)
+    );
+
+    if (!hasUnreadMessages) {
+      window.localStorage.setItem(unreadFlagKey, "false");
+    }
+  }, [messages, currentUserId, readMessageIds, unreadFlagKey]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const unreadIds = messages
+      .filter(
+        (message) => message.author.id !== currentUserId && !readMessageIds.includes(message.id)
+      )
+      .map((message) => message.id);
+
+    if (unreadIds.length === 0) {
+      window.localStorage.setItem(unreadFlagKey, "false");
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setReadMessageIds((current) => {
+        const next = Array.from(new Set([...current, ...unreadIds]));
+        return next;
+      });
+    }, 800);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [messages, currentUserId, readMessageIds, unreadFlagKey]);
+
   const unreadMessageIds = useMemo(
     () =>
       new Set(
@@ -120,6 +198,12 @@ export function TicketDiscussion({
     socket.on("ticket:message", (payload: TicketMessagePayload) => {
       if (payload.isInternal && userRole === Role.CLIENTE) {
         return;
+      }
+
+      if (payload.author.id !== currentUserId) {
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem(`ticket:unread:${ticketId}:${currentUserId}`, "true");
+        }
       }
 
       setMessages((current) => {
@@ -155,11 +239,15 @@ export function TicketDiscussion({
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [ticketId, currentUserName, userRole]);
+  }, [ticketId, currentUserName, userRole, currentUserId]);
 
   function handleMessageSent(payload: TicketMessagePayload) {
     if (payload.isInternal && userRole === Role.CLIENTE) {
       return;
+    }
+
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(`ticket:unread:${ticketId}:${currentUserId}`, "false");
     }
 
     setMessages((current) => {
