@@ -5,6 +5,7 @@ import { createServer } from "http";
 import { parse } from "url";
 import next from "next";
 import { Server, type Socket } from "socket.io";
+import { archiveResolvedTickets } from "./src/lib/ticket-auto-archive";
 
 interface TicketSocket extends Socket {
   role?: string;
@@ -25,6 +26,11 @@ const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
 
 app.prepare().then(async () => {
+  await archiveResolvedTickets();
+  setInterval(() => {
+    void archiveResolvedTickets();
+  }, 60_000);
+
   const httpServer = createServer((req, res) => {
     const parsedUrl = parse(req.url ?? "/", true);
     handle(req, res, parsedUrl);

@@ -1,6 +1,9 @@
 "use server";
 
 import "reflect-metadata";
+import { mkdir, writeFile } from "fs/promises";
+import path from "path";
+import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
@@ -11,6 +14,7 @@ import { User } from "@/entities/User";
 import { Equipment } from "@/entities/Equipment";
 import { Ticket } from "@/entities/Ticket";
 import { TicketHistory } from "@/entities/TicketHistory";
+import { TicketAttachment } from "@/entities/TicketAttachment";
 import { Role, TicketStatus, HistoryAction } from "@/types";
 import { ticketCreateSchema, registerSchema } from "@/lib/validators";
 import { getDueDates, nextTicketNumber } from "@/lib/tickets";
@@ -111,6 +115,14 @@ export async function logoutAction() {
 
 type CreateTicketState = { error?: string };
 
+const MAX_TICKET_IMAGES = 3;
+const IMAGE_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
+const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
+
+function imageExtension(mimeType: string) {
+  return { "image/jpeg": "jpg", "image/png": "png", "image/gif": "gif", "image/webp": "webp" }[mimeType];
+}
+
 export async function createTicketAction(_previousState: CreateTicketState, formData: FormData): Promise<CreateTicketState> {
   await initializeDatabase();
   
@@ -139,12 +151,21 @@ export async function createTicketAction(_previousState: CreateTicketState, form
     return { error: "Preencha o resumo, os detalhes (mínimo de 10 caracteres) e a área afetada." };
   }
 
+  const images = formData.getAll("images").filter((value): value is File => value instanceof File && value.size > 0);
+  if (images.length > MAX_TICKET_IMAGES) {
+    return { error: "É permitido anexar no máximo 3 imagens por chamado." };
+  }
+  if (images.some((image) => !IMAGE_MIME_TYPES.has(image.type) || image.size > MAX_IMAGE_SIZE_BYTES)) {
+    return { error: "Envie imagens JPG, PNG, GIF ou WEBP de até 5 MB cada." };
+  }
+
   const dueDates = await getDueDates(parsed.data.priority);
   const headersList = await headers();
   const ip = headersList.get("x-forwarded-for")?.split(",")[0] || "unknown";
 
   const ticketRepository = getRepository(Ticket);
   const ticketHistoryRepository = getRepository(TicketHistory);
+  const ticketAttachmentRepository = getRepository(TicketAttachment);
 
   const ticket = ticketRepository.create({
     protocolo: await nextTicketNumber(),
@@ -162,6 +183,24 @@ export async function createTicketAction(_previousState: CreateTicketState, form
   });
   await ticketRepository.save(ticket);
 
+  if (images.length > 0) {
+    const uploadDirectory = path.join(process.cwd(), "public", "uploads", "tickets", ticket.id);
+    await mkdir(uploadDirectory, { recursive: true });
+
+    const attachments = await Promise.all(images.map(async (image) => {
+      const fileName = `${randomUUID()}.${imageExtension(image.type)}`;
+      await writeFile(path.join(uploadDirectory, fileName), Buffer.from(await image.arrayBuffer()));
+      return ticketAttachmentRepository.create({
+        ticketId: ticket.id,
+        fileName: image.name.slice(0, 255),
+        fileUrl: `/uploads/tickets/${ticket.id}/${fileName}`,
+        fileType: image.type,
+        fileSize: image.size,
+      });
+    }));
+    await ticketAttachmentRepository.save(attachments);
+  }
+
   const history = ticketHistoryRepository.create({
     ticketId: ticket.id,
     actorId: session.id,
@@ -169,6 +208,15 @@ export async function createTicketAction(_previousState: CreateTicketState, form
     toValue: TicketStatus.ABERTO,
   });
   await ticketHistoryRepository.save(history);
+
+  if (images.length > 0) {
+    await ticketHistoryRepository.save(ticketHistoryRepository.create({
+      ticketId: ticket.id,
+      actorId: session.id,
+      action: HistoryAction.UPLOAD_ARQUIVO,
+      toValue: `${images.length} ${images.length === 1 ? "imagem anexada" : "imagens anexadas"}`,
+    }));
+  }
 
   revalidatePath("/cliente");
   redirect(`/tickets/${ticket.id}`);

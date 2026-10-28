@@ -1,5 +1,5 @@
 import "reflect-metadata";
-import { Info, MessageSquare, History, Smartphone, ShieldCheck, Clock, User, ArrowLeft } from "lucide-react";
+import { Info, MessageSquare, History, Smartphone, ShieldCheck, Clock, User, ArrowLeft, ImageIcon } from "lucide-react";
 import { Role } from "@/types";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -35,7 +35,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
       id,
       ...(session.role === Role.CLIENTE ? { clienteId: session.id } : {}),
     },
-    relations: ["cliente", "responsavel", "category", "equipment", "messages", "messages.author", "history", "history.actor"],
+    relations: ["cliente", "responsavel", "category", "equipment", "attachments", "messages", "messages.author", "history", "history.actor"],
   });
 
   if (ticket) {
@@ -95,6 +95,24 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
               </div>
             </CardContent>
           </Card>
+
+          {ticket.attachments.length > 0 && (
+            <Card className="overflow-hidden rounded-3xl border-border/60 bg-card shadow-sm">
+              <CardHeader className="border-b border-border/60 pb-4">
+                <CardTitle className="flex items-center gap-2 text-sm font-bold">
+                  <ImageIcon className="h-4 w-4 text-primary" /> Imagens anexadas
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="grid grid-cols-1 gap-3 pt-6 sm:grid-cols-2">
+                {ticket.attachments.map((attachment) => (
+                  <a key={attachment.id} href={attachment.fileUrl} target="_blank" rel="noreferrer" className="group overflow-hidden rounded-xl border border-border/60 bg-muted/20">
+                    <img src={attachment.fileUrl} alt={attachment.fileName} className="aspect-video w-full object-cover transition-transform group-hover:scale-105" />
+                    <p className="truncate px-3 py-2 text-xs font-medium" title={attachment.fileName}>{attachment.fileName}</p>
+                  </a>
+                ))}
+              </CardContent>
+            </Card>
+          )}
 
           <Card className="overflow-hidden rounded-3xl border-border/60 bg-card shadow-sm">
             <CardHeader className="border-b border-border/60 pb-4">
@@ -187,6 +205,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
                               <span className="text-muted-foreground/50">{new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                             </div>
                             <p className="text-muted-foreground uppercase truncate">POR {item.actor?.name.split(' ')[0] ?? "SISTEMA"}</p>
+                            {item.toValue && <p className="text-muted-foreground truncate">{item.toValue}</p>}
                           </div>
                         ))}
                       </div>
