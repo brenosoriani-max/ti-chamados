@@ -1,6 +1,6 @@
 import { getFreshSessionUser } from "@/lib/auth";
 import { Sidebar } from "@/components/sidebar";
-import { Bell, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { redirect } from "next/navigation";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -20,20 +20,22 @@ export default async function DashboardLayoutWrapper({
       <Sidebar user={user} />
       <div className="flex-1 lg:pl-72 flex flex-col min-h-screen">
         <header className="sticky top-0 z-30 h-16 flex items-center justify-between gap-8 bg-background/80 backdrop-blur-md border-b border-border/50 px-6 md:px-8">
-          <div className="flex-1 max-w-xl relative">
+          <form action="/tickets" method="GET" className="flex-1 max-w-xl relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
-            <Input 
+            <Input
               type="search"
-              placeholder="Pesquisar chamados, equipamentos ou usuários..." 
+              name="q"
+              aria-label="Pesquisar chamados"
+              placeholder="Pesquisar chamados, equipamentos ou usuários..."
               className="w-full bg-muted/40 border-transparent focus:bg-background transition-all rounded-xl h-10 text-sm pl-10"
             />
-          </div>
-          
+          </form>
+
           <div className="flex items-center gap-2 md:gap-4">
             <ThemeToggle />
-            
+
             <div className="h-8 w-[1px] bg-border/50 mx-2 hidden md:block" />
-            
+
             <div className="flex items-center gap-3">
               <div className="text-right hidden sm:block">
                 <p className="text-xs font-bold text-foreground leading-tight">{user.name}</p>
