@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Archive, User } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import Link from "next/link";
+import { Archive, ChevronDown, RotateCcw, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { StatusBadge } from "@/components/status-badge";
 import { archiveTicketAction } from "@/app/actions";
-import { hoursUntil, cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface ArchivedTicketsProps {
   initialArchivedTickets: any[];
@@ -18,77 +19,62 @@ export function ArchivedTickets({ initialArchivedTickets }: ArchivedTicketsProps
 
   function handleRestore(ticketId: string) {
     startTransition(async () => {
-      await archiveTicketAction(ticketId, false);
-      setTickets((prev) => prev.filter((ticket) => ticket.id !== ticketId));
+      try {
+        await archiveTicketAction(ticketId, false);
+        setTickets((current) => current.filter((ticket) => ticket.id !== ticketId));
+        toast.success("Chamado restaurado para a fila.");
+      } catch {
+        toast.error("Não foi possível restaurar o chamado.");
+      }
     });
   }
 
   return (
-    <div className="space-y-4">
+    <div>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-xl font-bold">Chamados Arquivados</h2>
-          <p className="text-sm text-muted-foreground">Visualize e restaure chamados que foram arquivados.</p>
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+            <Archive className="h-4 w-4" />
+          </div>
+          <div>
+            <h2 className="text-base font-bold">Arquivo de chamados</h2>
+            <p className="mt-0.5 text-sm text-muted-foreground">Itens encerrados ou retirados da fila de trabalho.</p>
+          </div>
         </div>
-        <Button
-          variant="outline"
-          onClick={() => setShowArchived((value) => !value)}
-        >
-          {showArchived ? "Ocultar arquivados" : `Ver arquivados (${tickets.length})`}
+        <Button variant="outline" size="sm" className="rounded-lg" onClick={() => setShowArchived((value) => !value)}>
+          {showArchived ? "Ocultar arquivo" : `Ver arquivo (${tickets.length})`}
+          <ChevronDown className={`h-4 w-4 transition-transform ${showArchived ? "rotate-180" : ""}`} />
         </Button>
       </div>
 
-      {showArchived ? (
-        tickets.length > 0 ? (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {tickets.map((ticket) => {
-              const hours = hoursUntil(ticket.slaDueAt);
-              const isOverdue = hours < 0;
-
-              return (
-                <Card key={ticket.id} className="border-border/40 shadow-sm bg-card">
-                  <CardHeader className="p-4 pb-2">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-[9px] font-bold text-primary bg-primary/10 px-2 py-1 rounded">#{ticket.number}</p>
-                        <CardTitle className="mt-2 text-sm font-bold leading-tight line-clamp-2">{ticket.title}</CardTitle>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        disabled={isPending}
-                        className="h-9 w-9 rounded-lg hover:bg-emerald-500/10 hover:text-emerald-600"
-                        onClick={() => handleRestore(ticket.id)}
-                      >
-                        <Archive className="h-4 w-4" />
-                      </Button>
+      {showArchived && (
+        <div className="mt-5 overflow-hidden rounded-2xl border border-border/60 bg-card">
+          {tickets.length > 0 ? (
+            <div className="divide-y divide-border/50">
+              {tickets.map((ticket) => (
+                <div key={ticket.id} className="flex flex-col gap-3 p-4 transition-colors hover:bg-muted/30 sm:flex-row sm:items-center sm:gap-4">
+                  <span className="w-fit rounded-md bg-muted px-2 py-1 text-[10px] font-bold text-muted-foreground">#{ticket.number}</span>
+                  <div className="min-w-0 flex-1">
+                    <Link href={`/tickets/${ticket.id}`} className="block truncate text-sm font-semibold hover:text-primary hover:underline">{ticket.title}</Link>
+                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1"><User className="h-3 w-3" />{ticket.customer?.name ?? "Cliente"}</span>
+                      <span>Atualizado em {new Date(ticket.updatedAt).toLocaleDateString("pt-BR")}</span>
                     </div>
-                  </CardHeader>
-                  <CardContent className="p-4 pt-2 space-y-3">
-                    <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                      <span className="flex items-center gap-2">
-                        <User className="h-3 w-3" />
-                        {ticket.customer?.name ?? "Cliente"}
-                      </span>
-                      <span className={cn(
-                        "rounded-full px-2 py-1 text-[10px] font-semibold",
-                        isOverdue ? "bg-red-500/10 text-red-500" : "bg-muted/20 text-muted-foreground"
-                      )}>
-                        {isOverdue ? "EXPIRADO" : `${hours}h`}
-                      </span>
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      Status: {ticket.status}
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">Não há chamados arquivados no momento.</p>
-        )
-      ) : null}
+                  </div>
+                  <div className="flex items-center justify-between gap-3 sm:justify-end">
+                    <StatusBadge status={ticket.status} />
+                    <Button variant="ghost" size="sm" disabled={isPending} className="h-8 rounded-lg text-xs text-muted-foreground hover:bg-primary/10 hover:text-primary" onClick={() => handleRestore(ticket.id)}>
+                      <RotateCcw className="h-3.5 w-3.5" /> Restaurar
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="px-4 py-8 text-center text-sm text-muted-foreground">Não há chamados arquivados.</p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

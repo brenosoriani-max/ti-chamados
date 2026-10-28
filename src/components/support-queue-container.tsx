@@ -1,17 +1,14 @@
 import "reflect-metadata";
 import { initializeDatabase, getRepository } from "@/lib/database";
 import { StatCard } from "@/components/stat-card";
-import { Clock3, AlertTriangle, Monitor, Activity } from "lucide-react";
+import { Clock3, AlertTriangle, Monitor, CheckCircle2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
 import { KanbanBoard } from "@/components/kanban-board";
 import { ArchivedTickets } from "@/components/archived-tickets";
 import { Ticket } from "@/entities/Ticket";
 import { Terminal } from "@/entities/Terminal";
-import { SessaoRemota } from "@/entities/SessaoRemota";
 import { User } from "@/entities/User";
-import { Role, TicketStatus, Priority, SessaoRemotaStatus, TerminalStatus } from "@/types";
+import { Role, TicketStatus, Priority, TerminalStatus } from "@/types";
 import { In, Not } from "typeorm";
 import { mapTicketListItem } from "@/lib/ticket-queries";
 
@@ -20,113 +17,88 @@ export async function SupportQueueContainer() {
 
   const ticketRepository = getRepository(Ticket);
   const terminalRepository = getRepository(Terminal);
-  const sessaoRepository = getRepository(SessaoRemota);
   const userRepository = getRepository(User);
 
-  const [activeTickets, archivedTickets, pendentes, criticos, onlineMachines, activeSessions, recentRemoteSessions, techList] =
-    await Promise.all([
-      ticketRepository.find({
-        where: { isArchived: false },
-        relations: ["cliente", "equipment"],
-        order: { updatedAt: "DESC" },
-      }),
-      ticketRepository.find({
-        where: { isArchived: true },
-        relations: ["cliente", "equipment"],
-        order: { updatedAt: "DESC" },
-      }),
-      ticketRepository.count({
-        where: {
-          isArchived: false,
-          status: In([
-            TicketStatus.ABERTO,
-            TicketStatus.EM_ANALISE,
-            TicketStatus.EM_ATENDIMENTO,
-            TicketStatus.AGUARDANDO_CLIENTE,
-          ]),
-        },
-      }),
-      ticketRepository.count({
-        where: {
-          isArchived: false,
-          prioridade: Priority.CRITICA,
-          status: Not(In([TicketStatus.RESOLVIDO, TicketStatus.CANCELADO])),
-        },
-      }),
-      terminalRepository.count({ where: { status: TerminalStatus.ONLINE } }),
-      sessaoRepository.count({
-        where: {
-          status: In([
-            SessaoRemotaStatus.AGUARDANDO,
-            SessaoRemotaStatus.CONECTANDO,
-            SessaoRemotaStatus.ATIVA,
-          ]),
-        },
-      }),
-      sessaoRepository.find({
-        relations: ["terminal", "usuario"],
-        order: { createdAt: "DESC" },
-        take: 4,
-      }),
-      userRepository.find({
-        where: { role: In([Role.TECNICO, Role.ADMIN]) },
-        select: ["id", "name"],
-        order: { name: "ASC" },
-      }),
-    ]);
+  const [activeTickets, archivedTickets, pendingCount, criticalCount, onlineMachines, techList] = await Promise.all([
+    ticketRepository.find({
+      where: { isArchived: false },
+      relations: ["cliente", "equipment"],
+      order: { updatedAt: "DESC" },
+    }),
+    ticketRepository.find({
+      where: { isArchived: true },
+      relations: ["cliente", "equipment"],
+      order: { updatedAt: "DESC" },
+    }),
+    ticketRepository.count({
+      where: {
+        isArchived: false,
+        status: In([
+          TicketStatus.ABERTO,
+          TicketStatus.EM_ANALISE,
+          TicketStatus.EM_ATENDIMENTO,
+          TicketStatus.AGUARDANDO_CLIENTE,
+        ]),
+      },
+    }),
+    ticketRepository.count({
+      where: {
+        isArchived: false,
+        prioridade: Priority.CRITICA,
+        status: Not(In([TicketStatus.RESOLVIDO, TicketStatus.CANCELADO])),
+      },
+    }),
+    terminalRepository.count({ where: { status: TerminalStatus.ONLINE } }),
+    userRepository.find({
+      where: { role: In([Role.TECNICO, Role.ADMIN]) },
+      select: ["id", "name"],
+      order: { name: "ASC" },
+    }),
+  ]);
 
-    const tickets = activeTickets.map(mapTicketListItem);
-    const archived = archivedTickets.map(mapTicketListItem);
-    const plainTechList = techList.map((t) => ({ id: t.id, name: t.name }));
+  const tickets = activeTickets.map(mapTicketListItem);
+  const archived = archivedTickets.map(mapTicketListItem);
+  const plainTechList = techList.map((technician) => ({ id: technician.id, name: technician.name }));
+  const resolvedCount = activeTickets.filter((ticket) => ticket.status === TicketStatus.RESOLVIDO).length;
 
   return (
-    <div className="space-y-12">
-      <div className="flex items-center gap-3 justify-end">
-        <Badge variant="outline" className="h-9 px-4 rounded-xl font-bold text-[10px] bg-background/50 border-border/40 text-muted-foreground tracking-widest">
-          {pendentes} CHAMADOS PENDENTES
-        </Badge>
-        <Badge variant="secondary" className="h-9 px-4 rounded-xl font-bold text-[10px] bg-red-500/10 text-red-500 border-red-500/20 tracking-widest animate-pulse">
-          {criticos} CRÍTICOS AGORA
-        </Badge>
-      </div>
-
-      <section className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Total Pendente" value={pendentes} icon={Clock3} tone="text-amber-500" />
-        <StatCard label="Incidentes" value={criticos} icon={AlertTriangle} tone="text-red-500" />
-        <StatCard label="Dispositivos" value={onlineMachines} icon={Monitor} tone="text-emerald-500" />
-        <StatCard label="Atendimentos" value={activeSessions} icon={Activity} tone="text-sky-500" />
-      </section>
-
-      <div className="space-y-6">
-        <h2 className="text-xl font-bold">Quadro de Status</h2>
-        <KanbanBoard initialTickets={tickets} techList={plainTechList} />
-      </div>
-
-      <div className="mt-12 border-t border-border/20 pt-10">
-        <ArchivedTickets initialArchivedTickets={archived} />
-      </div>
-
-      <div className="mt-12 border-t border-border/20 pt-10">
-        <h2 className="text-xl font-bold flex items-center gap-2 mb-6">
-          <Monitor className="h-5 w-5 text-emerald-500" />
-          Sessões Ativas
-        </h2>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {recentRemoteSessions.map((session) => (
-            <Card key={session.id} className="border border-border/20 shadow-sm bg-card/40">
-              <CardContent className="p-4 flex items-center gap-4">
-                <div className={cn("h-10 w-10 rounded-lg flex items-center justify-center", session.status !== "ENCERRADA" ? 'bg-emerald-500/10 text-emerald-500' : 'bg-muted text-muted-foreground')}>
-                  <Activity className="h-5 w-5" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-bold text-xs truncate">{session.terminal?.nome ?? "Terminal"}</p>
-                  <p className="text-[9px] font-medium text-muted-foreground uppercase">{session.usuario?.name ?? "Operador"}</p>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+    <div className="space-y-8">
+      <div className="flex flex-col gap-3 border-b border-border/50 pb-6 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Visão operacional</p>
+          <p className="mt-1 text-sm text-muted-foreground">Organize prioridades e acompanhe cada etapa do atendimento.</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="outline" className="h-8 rounded-lg border-border/60 bg-background px-3 text-[10px] font-bold tracking-wider text-muted-foreground">
+            {pendingCount} EM ABERTO
+          </Badge>
+          <Badge variant="outline" className="h-8 rounded-lg border-red-500/20 bg-red-500/5 px-3 text-[10px] font-bold tracking-wider text-red-600 dark:text-red-400">
+            {criticalCount} CRÍTICOS
+          </Badge>
         </div>
       </div>
+
+      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatCard label="Na fila" value={pendingCount} icon={Clock3} tone="text-amber-500" />
+        <StatCard label="Prioridade crítica" value={criticalCount} icon={AlertTriangle} tone="text-red-500" />
+        <StatCard label="Resolvidos" value={resolvedCount} icon={CheckCircle2} tone="text-emerald-500" />
+        <StatCard label="Dispositivos online" value={onlineMachines} icon={Monitor} tone="text-sky-500" />
+      </section>
+
+      <section className="rounded-3xl border border-border/60 bg-card/70 p-4 shadow-sm sm:p-6">
+        <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 className="text-lg font-bold tracking-tight">Fluxo de atendimento</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Arraste um chamado entre as etapas para atualizar seu status.</p>
+          </div>
+          <span className="text-xs font-medium text-muted-foreground">{tickets.length} chamados ativos</span>
+        </div>
+        <KanbanBoard initialTickets={tickets} techList={plainTechList} />
+      </section>
+
+      <section className="border-t border-border/50 pt-6">
+        <ArchivedTickets initialArchivedTickets={archived} />
+      </section>
     </div>
   );
 }

@@ -29,11 +29,11 @@ export default async function SuportePage() {
   }
 
   return (
-    <div className="space-y-10">
+    <div className="mx-auto max-w-[1600px] space-y-8">
       <header className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
           <div className="mb-1 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary"><Headset className="h-3 w-3" />Central de Suporte</div>
-          <h1 className="text-3xl font-black tracking-tight">Fila de Atendimento</h1>
+          <h1 className="text-3xl font-black tracking-tight">Rotina de atendimentos</h1>
           <p className="text-sm font-medium text-muted-foreground">{isStaff ? "Monitoramento em tempo real de chamados e equipamentos." : "Sua fila está pronta para receber o primeiro chamado."}</p>
         </div>
       </header>

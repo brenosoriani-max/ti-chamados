@@ -25,7 +25,8 @@ import { CSS } from "@dnd-kit/utilities";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { User, Archive, MoreHorizontal, Clock, Hash } from "lucide-react";
+import { Archive, Clock, ExternalLink, Hash, Inbox } from "lucide-react";
+import Link from "next/link";
 import { PriorityBadge } from "@/components/status-badge";
 import { TicketAssignSelect } from "@/components/ticket-assign-select";
 import { formatTicketStatus, hoursUntil, cn } from "@/lib/utils";
@@ -77,9 +78,14 @@ const TicketCard = memo(({ ticket, techList, isOverlay, onArchive }: any) => {
           </div>
         </div>
 
-        <h4 className="text-[13px] font-bold leading-snug text-foreground/90 group-hover:text-primary transition-colors pr-2">
-          {ticket.title}
-        </h4>
+        <Link
+          href={`/tickets/${ticket.id}`}
+          onPointerDown={(event) => event.stopPropagation()}
+          className="flex items-start justify-between gap-2 text-[13px] font-bold leading-snug text-foreground/90 transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <span>{ticket.title}</span>
+          <ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+        </Link>
 
         <div className="flex flex-col gap-2.5 pt-2 border-t border-border/10">
           <div className="flex items-center justify-between">
@@ -166,7 +172,7 @@ const KanbanColumn = memo(({ id, title, tickets, techList, onArchive }: any) => 
 
   return (
     <div ref={setNodeRef} className="kanban-column group/col">
-      <div className="flex items-center justify-between px-2 mb-4 shrink-0">
+      <div className="mb-4 flex items-center justify-between px-1 shrink-0">
         <div className="flex items-center gap-2 min-w-0">
           <div className={cn(
             "h-2 w-2 rounded-full",
@@ -183,12 +189,18 @@ const KanbanColumn = memo(({ id, title, tickets, techList, onArchive }: any) => 
         </span>
       </div>
 
-      <div className="flex-1 overflow-y-auto pr-2 flex flex-col gap-3 scrollbar-hide">
+      <div className="flex min-h-[190px] flex-1 flex-col gap-3 overflow-y-auto pr-1 scrollbar-hide">
         <SortableContext items={ticketIds} strategy={verticalListSortingStrategy}>
           {tickets.map((ticket: any) => (
             <SortableTicket key={ticket.id} ticket={ticket} techList={techList} onArchive={onArchive} />
           ))}
         </SortableContext>
+        {tickets.length === 0 && (
+          <div className="flex min-h-28 flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-background/40 px-4 text-center">
+            <Inbox className="mb-2 h-4 w-4 text-muted-foreground/70" />
+            <p className="text-[11px] font-medium text-muted-foreground">Nenhum chamado nesta etapa</p>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -306,7 +318,7 @@ export function KanbanBoard({ initialTickets, techList }: KanbanBoardProps) {
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex gap-6 overflow-x-auto pb-12 scrollbar-hide min-h-[700px] items-start">
+      <div className="flex min-h-[530px] items-start gap-4 overflow-x-auto pb-3 scrollbar-hide">
         {columns.map((col) => (
           <KanbanColumn 
             key={col} 
