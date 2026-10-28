@@ -269,6 +269,49 @@ export async function createUserAction(formData: FormData) {
   }
 }
 
+export async function reopenTicketAction(ticketId: string) {
+  await initializeDatabase();
+
+  const session = await getSession();
+  if (!session) throw new Error("Não autenticado");
+
+  const ticketRepository = getRepository(Ticket);
+  const ticketHistoryRepository = getRepository(TicketHistory);
+
+  const ticket = await ticketRepository.findOne({ where: { id: ticketId } });
+  if (!ticket) throw new Error("Chamado não encontrado");
+
+  const isOwner = ticket.clienteId === session.id;
+  const isStaff = session.role === Role.TECNICO || session.role === Role.ADMIN;
+
+  if (!isOwner && !isStaff) {
+    throw new Error("Sem permissão");
+  }
+
+  if (![TicketStatus.RESOLVIDO, TicketStatus.ENCERRADO, TicketStatus.CANCELADO].includes(ticket.status)) {
+    return;
+  }
+
+  const oldStatus = ticket.status;
+  ticket.status = TicketStatus.ABERTO;
+  ticket.resolvedAt = undefined;
+  ticket.closedAt = undefined;
+  await ticketRepository.save(ticket);
+
+  await ticketHistoryRepository.save(ticketHistoryRepository.create({
+    ticketId: ticket.id,
+    actorId: session.id,
+    action: HistoryAction.MUDANCA_STATUS,
+    fromValue: oldStatus,
+    toValue: TicketStatus.ABERTO,
+  }));
+
+  revalidatePath("/tickets");
+  revalidatePath("/cliente");
+  revalidatePath("/suporte");
+  revalidatePath(`/tickets/${ticketId}`);
+}
+
 export async function updateTicketStatusAction(ticketId: string, newStatus: string) {
   await initializeDatabase();
   
@@ -290,8 +333,13 @@ export async function updateTicketStatusAction(ticketId: string, newStatus: stri
 
   if (newStatus === TicketStatus.RESOLVIDO) {
     ticket.resolvedAt = new Date();
+    ticket.closedAt = undefined;
   } else if (newStatus === TicketStatus.ENCERRADO) {
     ticket.closedAt = new Date();
+    ticket.resolvedAt = undefined;
+  } else if (newStatus === TicketStatus.ABERTO) {
+    ticket.resolvedAt = undefined;
+    ticket.closedAt = undefined;
   }
   ticket.status = newStatus as TicketStatus;
   await ticketRepository.save(ticket);

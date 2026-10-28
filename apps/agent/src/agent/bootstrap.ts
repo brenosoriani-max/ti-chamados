@@ -38,11 +38,22 @@ let shouldReconnect = true;
 let reconnectAttempts = 0;
 
 const RECONNECT_DELAYS = [
+  3000,
   5000,
   10000,
   20000,
   30000,
 ];
+
+function normalizeStatusLabel(status: string) {
+  if (status.startsWith("Reconectando")) return "Reconectando";
+  if (status.startsWith("Conectando")) return "Conectando";
+  if (status === "Online") return "Online";
+  if (status.startsWith("Erro de Conexão")) return "Erro de Conexão";
+  if (status === "Desconectado") return "Desconectado";
+  if (status === "Desconfigurado") return "Desconfigurado";
+  return status;
+}
 
 export function setStatusChangeListener(
   callback: typeof onStatusChangeCallback
@@ -62,7 +73,7 @@ function updateStatus(
   newStatus: string,
   error: string | null = null
 ) {
-  status = newStatus;
+  status = normalizeStatusLabel(newStatus);
   connectionError = error;
 
   onStatusChangeCallback?.({
@@ -103,18 +114,13 @@ function scheduleReconnect(reason?: string) {
 
   const delay =
     RECONNECT_DELAYS[
-      Math.min(
-        reconnectAttempts,
-        RECONNECT_DELAYS.length - 1
-      )
+      Math.min(reconnectAttempts, RECONNECT_DELAYS.length - 1)
     ];
 
-  reconnectAttempts++;
+  reconnectAttempts += 1;
 
-  updateStatus(
-    `Reconectando em ${Math.floor(delay / 1000)}s`,
-    reason ?? null
-  );
+  const reconnectStatus = `Reconectando em ${Math.floor(delay / 1000)}s`;
+  updateStatus(reconnectStatus, reason ?? connectionError ?? "Conexão perdida");
 
   reconnectTimer = setTimeout(async () => {
     if (!shouldReconnect) {
@@ -160,13 +166,8 @@ export async function startAgent() {
   try {
     socket = createAgentSocket(serverUrl, token);
   } catch (err) {
-    const message =
-      err instanceof Error
-        ? err.message
-        : "Falha ao criar socket";
-
+    const message = err instanceof Error ? err.message : "Falha ao criar socket";
     updateStatus("Erro de Conexão", message);
-
     scheduleReconnect(message);
     return;
   }
@@ -186,145 +187,77 @@ export async function startAgent() {
       payload.machineName = terminalNameSetting;
     }
 
-    socket?.emit(
-      remoteSocketEvents.terminalRegister,
-      payload,
-      (response: any) => {
-        if (response?.ok) {
-          if (response.token) {
-            setToken(response.token);
-          }
-
-          updateStatus("Online");
-        } else {
-          const errorMessage =
-            response?.error ??
-            "Falha no registro do terminal";
-
-          updateStatus(
-            "Erro de Conexão",
-            errorMessage
-          );
-
-          scheduleReconnect(errorMessage);
+    socket?.emit(remoteSocketEvents.terminalRegister, payload, (response: any) => {
+      if (response?.ok) {
+        if (response.token) {
+          setToken(response.token);
         }
+
+        updateStatus("Online");
+      } else {
+        const errorMessage = response?.error ?? "Falha no registro do terminal";
+        updateStatus("Erro de Conexão", errorMessage);
+        scheduleReconnect(errorMessage);
       }
-    );
+    });
   });
 
   socket.on("connect_error", (error) => {
-    updateStatus(
-      "Erro de Conexão",
-      error.message
-    );
-
+    updateStatus("Erro de Conexão", error.message);
     scheduleReconnect(error.message);
   });
 
   socket.on("disconnect", (reason) => {
-    updateStatus(
-      "Desconectado",
-      String(reason)
-    );
+    const reasonText = String(reason || "desconectado");
+    updateStatus("Desconectado", reasonText);
 
-    if (
-      shouldReconnect &&
-      reason !== "io client disconnect"
-    ) {
-      scheduleReconnect(String(reason));
+    if (shouldReconnect && reason !== "io client disconnect") {
+      scheduleReconnect(reasonText);
     }
   });
 
-  socket.on(
-    remoteSocketEvents.terminalRegistered,
-    (payload: { token: string }) => {
-      setToken(payload.token);
+  socket.on(remoteSocketEvents.terminalRegistered, (payload: { token: string }) => {
+    setToken(payload.token);
 
-      reconnectAttempts = 0;
+    reconnectAttempts = 0;
 
-      updateStatus("Online");
+    updateStatus("Online");
+  });
+
+  socket.on(remoteSocketEvents.sessionCreate, async (payload: { sessaoId: string; monitorIndex?: number }) => {
+    if (!socket) {
+      return;
     }
-  );
 
-  socket.on(
-    remoteSocketEvents.sessionCreate,
-    async (payload: { sessaoId: string; monitorIndex?: number }) => {
-      if (!socket) {
-        return;
-      }
+    socket.emit(remoteSocketEvents.sessionAccept, {
+      sessaoId: payload.sessaoId,
+    });
 
-      socket.emit(
-        remoteSocketEvents.sessionAccept,
-        {
-          sessaoId: payload.sessaoId,
-        }
-      );
+    await startScreenShare(socket, payload);
+  });
 
-      await startScreenShare(
-        socket,
-        payload
-      );
-    }
-  );
+  socket.on(remoteSocketEvents.sessionEnd, () => {
+    stopScreenShare();
+  });
 
-  socket.on(
-    remoteSocketEvents.sessionEnd,
-    () => {
-      stopScreenShare();
-    }
-  );
-
-  socket.on(
-    remoteSocketEvents.mouseMove,
-    handleMouseMove
-  );
-
-  socket.on(
-    remoteSocketEvents.mouseClick,
-    handleMouseClick
-  );
-
-  socket.on(
-    remoteSocketEvents.mouseScroll,
-    handleMouseScroll
-  );
-
-  socket.on(
-    remoteSocketEvents.keyboardKeyDown,
-    (payload) =>
-      handleKeyboardKey(payload, "down")
-  );
-
-  socket.on(
-    remoteSocketEvents.keyboardKeyUp,
-    (payload) =>
-      handleKeyboardKey(payload, "up")
-  );
-
-  socket.on(
-  remoteSocketEvents.keyboardType,
-  handleTypeText
-);
-
-
+  socket.on(remoteSocketEvents.mouseMove, handleMouseMove);
+  socket.on(remoteSocketEvents.mouseClick, handleMouseClick);
+  socket.on(remoteSocketEvents.mouseScroll, handleMouseScroll);
+  socket.on(remoteSocketEvents.keyboardKeyDown, (payload) => handleKeyboardKey(payload, "down"));
+  socket.on(remoteSocketEvents.keyboardKeyUp, (payload) => handleKeyboardKey(payload, "up"));
+  socket.on(remoteSocketEvents.keyboardType, handleTypeText);
 
   heartbeatInterval = setInterval(() => {
     if (!socket || !socket.connected) {
       return;
     }
 
-    
-
-
     const info = collectSystemInfo();
 
-    socket.emit(
-      remoteSocketEvents.terminalHeartbeat,
-      {
-        token: getToken(),
-        ip: info.ip,
-        usuarioLogado: info.usuarioLogado,
-      }
-    );
+    socket.emit(remoteSocketEvents.terminalHeartbeat, {
+      token: getToken(),
+      ip: info.ip,
+      usuarioLogado: info.usuarioLogado,
+    });
   }, HEARTBEAT_INTERVAL_MS);
 }

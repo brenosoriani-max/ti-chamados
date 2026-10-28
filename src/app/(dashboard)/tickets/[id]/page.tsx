@@ -1,6 +1,6 @@
 import "reflect-metadata";
-import { Info, MessageSquare, History, Smartphone, ShieldCheck, Clock, User, ArrowLeft, ImageIcon } from "lucide-react";
-import { Role } from "@/types";
+import { Info, MessageSquare, History, Smartphone, ShieldCheck, Clock, User, ArrowLeft, ImageIcon, RefreshCcw } from "lucide-react";
+import { Role, TicketStatus } from "@/types";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { PriorityBadge, StatusBadge } from "@/components/status-badge";
@@ -12,6 +12,7 @@ import { Ticket } from "@/entities/Ticket";
 import { TicketMessage } from "@/entities/TicketMessage";
 import { TicketHistory } from "@/entities/TicketHistory";
 import { TicketDiscussion } from "@/components/ticket-discussion";
+import { TicketReopenButton } from "@/components/ticket-reopen-button";
 
 function formatHistoryBlock(date: Date) {
   const today = new Date();
@@ -23,6 +24,9 @@ function formatHistoryBlock(date: Date) {
   if (diffDays === 1) return "Ontem";
   return new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium" }).format(date);
 }
+
+const isTicketClosed = (status: TicketStatus) =>
+  [TicketStatus.RESOLVIDO, TicketStatus.ENCERRADO, TicketStatus.CANCELADO].includes(status);
 
 export default async function TicketDetailPage({ params }: { params: Promise<{ id: string }> }) {
   await initializeDatabase();
@@ -57,20 +61,34 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
     return acc;
   }, {});
 
+  const chatBlocked = isTicketClosed(ticket.status);
+
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6">
       <header className="flex items-start gap-4 rounded-3xl border border-border/60 bg-card px-5 py-5 shadow-sm sm:px-7">
         <Link href="/tickets" className="mt-0.5 rounded-xl border border-border/60 p-2.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
           <ArrowLeft className="h-4 w-4" />
         </Link>
-        <div className="space-y-1">
+        <div className="flex-1 space-y-3">
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-md bg-primary/10 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-primary">#{ticket.protocolo}</span>
             <StatusBadge status={ticket.status} />
           </div>
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{ticket.titulo}</h1>
         </div>
+        {chatBlocked && (
+          <TicketReopenButton ticketId={ticket.id} />
+        )}
       </header>
+
+      {chatBlocked && (
+        <div className="flex items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-100">
+          <div className="flex items-center gap-2">
+            <RefreshCcw className="h-4 w-4" />
+            <span className="font-medium">Este chamado foi finalizado. Para continuar a conversa, reabra o atendimento.</span>
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="space-y-6">
@@ -132,6 +150,13 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
                   body: message.body,
                   isInternal: message.isInternal,
                   createdAt: message.createdAt.toISOString(),
+                  attachments: (message.attachments ?? []).map((attachment) => ({
+                    id: attachment.id,
+                    fileName: attachment.fileName,
+                    fileUrl: attachment.fileUrl,
+                    fileType: attachment.fileType ?? null,
+                    fileSize: attachment.fileSize ?? null,
+                  })),
                   author: {
                     id: message.author.id,
                     name: message.author.name,
@@ -140,6 +165,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
                 }))}
                 canSendInternal={session.role !== Role.CLIENTE}
                 userRole={session.role}
+                isChatBlocked={chatBlocked}
               />
             </CardContent>
           </Card>

@@ -7,11 +7,20 @@ import { TicketMessageForm } from "@/components/ticket-message-form";
 import { formatDateTime, cn } from "@/lib/utils";
 import { Role } from "@/types";
 
+type TicketAttachmentPayload = {
+  id: string;
+  fileName: string;
+  fileUrl: string;
+  fileType?: string | null;
+  fileSize?: number | null;
+};
+
 type TicketMessagePayload = {
   id: string;
   body: string;
   isInternal: boolean;
   createdAt: string;
+  attachments?: TicketAttachmentPayload[];
   author: { id: string; name: string; avatarUrl?: string | null };
 };
 
@@ -29,6 +38,7 @@ interface TicketDiscussionProps {
   initialMessages: TicketMessagePayload[];
   canSendInternal?: boolean;
   userRole: Role;
+  isChatBlocked?: boolean;
 }
 
 export function TicketDiscussion({
@@ -39,6 +49,7 @@ export function TicketDiscussion({
   initialMessages,
   canSendInternal = false,
   userRole,
+  isChatBlocked = false,
 }: TicketDiscussionProps) {
   const socketRef = useRef<Socket | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -301,6 +312,12 @@ export function TicketDiscussion({
 
   return (
     <div className="space-y-6">
+      {isChatBlocked && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-medium text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-200">
+          Este chamado foi finalizado. Novas mensagens ficam bloqueadas até ser reaberto.
+        </div>
+      )}
+
       <div ref={scrollRef} className="space-y-6 max-h-[500px] overflow-y-auto pr-2 scrollbar-hide">
         {messages.length > 0 ? (
           messages.map((message) => {
@@ -350,12 +367,42 @@ export function TicketDiscussion({
                     </span>
                   </div>
                 </div>
+
                 <p className={cn(
                   "pl-9 text-xs font-medium leading-relaxed",
                   message.isInternal ? "text-amber-700 dark:text-amber-300" : "text-foreground/80"
                 )}>
                   {message.body}
                 </p>
+
+                {message.attachments && message.attachments.length > 0 && (
+                  <div className="mt-3 grid gap-3 pl-9 sm:grid-cols-2">
+                    {message.attachments.map((attachment) => (
+                      <a
+                        key={attachment.id}
+                        href={attachment.fileUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="group overflow-hidden rounded-xl border border-border/60 bg-background"
+                      >
+                        {attachment.fileType?.startsWith("image/") ? (
+                          <img
+                            src={attachment.fileUrl}
+                            alt={attachment.fileName}
+                            className="aspect-video w-full object-cover transition-transform group-hover:scale-105"
+                          />
+                        ) : (
+                          <div className="flex aspect-video items-center justify-center bg-muted/50 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                            Arquivo
+                          </div>
+                        )}
+                        <p className="truncate px-3 py-2 text-[10px] font-medium" title={attachment.fileName}>
+                          {attachment.fileName}
+                        </p>
+                      </a>
+                    ))}
+                  </div>
+                )}
               </div>
             );
           })
@@ -378,6 +425,7 @@ export function TicketDiscussion({
           canSendInternal={canSendInternal}
           onMessageSent={handleMessageSent}
           onTypingChange={handleTypingChange}
+          disabled={isChatBlocked}
         />
       </div>
     </div>

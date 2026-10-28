@@ -31,7 +31,7 @@ export const ticketUpdateSchema = z.object({
 });
 
 export const messageCreateSchema = z.object({
-  body: z.string().min(1),
+  body: z.string().default(""),
   isInternal: z.boolean().default(false)
 });
 
