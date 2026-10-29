@@ -2,38 +2,26 @@
 
 import { Moon, Sun } from "lucide-react"
 import { useTheme } from "next-themes"
+import { useEffect, useState } from "react"
 
 export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme()
-  const isDark = resolvedTheme === "dark"
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  const isDark = mounted && resolvedTheme === "dark"
 
   return (
     <button
       type="button"
-      aria-label="Alternar tema"
+      aria-label={isDark ? "Ativar modo claro" : "Ativar modo escuro"}
       onClick={() => setTheme(isDark ? "light" : "dark")}
-      className="
-        group
-        flex
-        h-10
-        w-10
-        items-center
-        justify-center
-        rounded-xl
-        border
-        border-border
-        bg-background
-        text-muted-foreground
-        transition-all
-        hover:border-primary/30
-        hover:text-foreground
-      "
+      className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground"
     >
-      {isDark ? (
-        <Sun className="h-4 w-4 text-amber-500" />
-      ) : (
-        <Moon className="h-4 w-4 text-slate-700" />
-      )}
+      {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
     </button>
   )
 }

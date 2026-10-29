@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { exec } from "child_process";
-import { promisify } from "util";
+import { spawn } from "child_process";
+import { createWriteStream } from "fs";
 import { mkdir, stat } from "fs/promises";
 import path from "path";
 import { getRepository, initializeDatabase } from "@/lib/database";
@@ -8,7 +8,53 @@ import { BackupLog, BackupStatus } from "@/entities/BackupLog";
 import { requireSession } from "@/lib/auth";
 import { Role } from "@/types";
 
-const execAsync = promisify(exec);
+function runMysqlDump(filePath: string) {
+  const host = process.env.DB_HOST || "localhost";
+  const port = process.env.DB_PORT || "3306";
+  const user = process.env.DB_USER || "root";
+  const password = process.env.DB_PASSWORD || "";
+  const database = process.env.DB_NAME || "ti_chamados";
+
+  return new Promise<void>((resolve, reject) => {
+    const child = spawn(
+      "mysqldump",
+      [
+        "-h",
+        host,
+        "-P",
+        String(port),
+        "-u",
+        user,
+        "--single-transaction",
+        "--routines",
+        "--triggers",
+        "--add-drop-table",
+        database,
+      ],
+      {
+        env: { ...process.env, MYSQL_PWD: password },
+        windowsHide: true,
+      }
+    );
+
+    const output = createWriteStream(filePath);
+    child.stdout.pipe(output);
+
+    let stderr = "";
+    child.stderr.on("data", (chunk) => {
+      stderr += String(chunk);
+    });
+    child.on("error", (error) => {
+      output.close();
+      reject(error);
+    });
+    child.on("close", (code) => {
+      output.close();
+      if (code === 0) resolve();
+      else reject(new Error(stderr.trim() || `mysqldump finalizou com código ${code}.`));
+    });
+  });
+}
 
 export async function GET() {
   try {
@@ -62,20 +108,10 @@ export async function POST(request: NextRequest) {
     const fileName = `backup_${timestamp}.sql`;
     const filePath = path.join(backupDir, fileName);
 
-    const host = process.env.DB_HOST || "localhost";
-    const port = process.env.DB_PORT || "3306";
-    const user = process.env.DB_USER || "root";
-    const password = process.env.DB_PASSWORD || "";
-    const database = process.env.DB_NAME || "ti_chamados";
-
     const startTime = Date.now();
 
     try {
-      // Use mysqldump if available, otherwise generate a simple SQL header
-      const passwordArg = password ? `-p${password}` : "";
-      const cmd = `mysqldump -h ${host} -P ${port} -u ${user} ${passwordArg} --single-transaction --routines --triggers --add-drop-table ${database} > "${filePath}"`;
-
-      await execAsync(cmd, { timeout: 120_000 });
+      await runMysqlDump(filePath);
 
       const fileStats = await stat(filePath);
       const durationMs = Date.now() - startTime;

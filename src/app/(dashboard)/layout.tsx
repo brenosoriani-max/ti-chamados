@@ -1,5 +1,6 @@
 import { getFreshSessionUser } from "@/lib/auth";
 import { Sidebar } from "@/components/sidebar";
+import { MobileNav } from "@/components/mobile-nav";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { redirect } from "next/navigation";
@@ -18,8 +19,9 @@ export default async function DashboardLayoutWrapper({
   return (
     <div className="flex min-h-screen bg-background">
       <Sidebar user={user} />
+      <MobileNav user={user} />
       <div className="flex-1 lg:pl-72 flex flex-col min-h-screen">
-        <header className="sticky top-0 z-30 h-16 flex items-center justify-between gap-8 bg-background/80 backdrop-blur-md border-b border-border/50 px-6 md:px-8">
+        <header className="sticky top-0 z-30 hidden h-16 items-center justify-between gap-8 bg-background/80 backdrop-blur-md border-b border-border/50 px-6 md:px-8 lg:flex">
           <form action="/tickets" method="GET" className="flex-1 max-w-xl relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
             <Input

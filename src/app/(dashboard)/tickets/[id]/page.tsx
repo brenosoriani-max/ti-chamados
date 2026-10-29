@@ -1,5 +1,5 @@
 import "reflect-metadata";
-import { Info, MessageSquare, History, Smartphone, ShieldCheck, Clock, UserRound as UserIcon, ArrowLeft, ImageIcon, RefreshCcw } from "lucide-react";
+import { Info, MessageSquare, History, Smartphone, ShieldCheck, Clock, UserRound as UserIcon, ArrowLeft, ImageIcon, RefreshCcw, CheckCircle2, SendToBack } from "lucide-react";
 import { Role, TicketStatus } from "@/types";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -15,6 +15,9 @@ import { TicketHistory } from "@/entities/TicketHistory";
 import { TicketDiscussion } from "@/components/ticket-discussion";
 import { TicketReopenButton } from "@/components/ticket-reopen-button";
 import { TicketDetailActions } from "@/components/ticket-detail-actions";
+import { RelatedKnowledge } from "@/components/related-knowledge";
+import { findRelatedKnowledgeArticles } from "@/lib/knowledge";
+import { In } from "typeorm";
 
 function formatHistoryBlock(date: Date) {
   const today = new Date();
@@ -57,12 +60,19 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
     (message: TicketMessage) => !message.isInternal || session.role !== Role.CLIENTE
   );
 
-  const techList = (await getRepository(UserEntity)
-    .find({
-      where: { role: Role.TECNICO },
+  const [techList, relatedArticles] = await Promise.all([
+    getRepository(UserEntity).find({
+      where: { role: In([Role.TECNICO, Role.ADMIN]) },
       select: ["id", "name"],
       order: { name: "ASC" },
-    })) as Array<{ id: string; name: string }>;
+    }) as Promise<Array<{ id: string; name: string }>>,
+    findRelatedKnowledgeArticles({
+      title: ticket.titulo,
+      description: ticket.descricao,
+      categoryId: ticket.categoryId,
+      limit: 4,
+    }),
+  ]);
 
   const historyByDay = ticket.history.reduce<Record<string, TicketHistory[]>>((acc, item) => {
     const label = formatHistoryBlock(new Date(item.createdAt));
@@ -131,6 +141,37 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
               </div>
             </CardContent>
           </Card>
+
+          {ticket.conclusaoAtendimento && (
+            <Card className="overflow-hidden rounded-3xl border-emerald-500/20 bg-emerald-500/5 shadow-sm">
+              <CardHeader className="border-b border-emerald-500/10 pb-4">
+                <CardTitle className="text-sm font-bold flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
+                  <CheckCircle2 className="h-4 w-4" />
+                  Conclusão do atendimento
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/80">{ticket.conclusaoAtendimento}</p>
+                {ticket.resolvedAt && (
+                  <p className="mt-4 text-[11px] font-medium text-muted-foreground">
+                    Finalizado em {formatDateTime(ticket.resolvedAt)}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {ticket.transferReason && (
+            <div className="rounded-2xl border border-border/60 bg-muted/30 p-4 text-sm">
+              <div className="mb-1 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                <SendToBack className="h-3 w-3" />
+                Última transferência
+              </div>
+              <p className="text-foreground/80">{ticket.transferReason}</p>
+            </div>
+          )}
+
+          {canManageTicket && <RelatedKnowledge articles={relatedArticles} />}
 
           {ticket.attachments.length > 0 && (
             <Card className="overflow-hidden rounded-3xl border-border/60 bg-card shadow-sm">

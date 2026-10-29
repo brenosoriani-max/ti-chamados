@@ -3,7 +3,7 @@ import { initializeDatabase, getRepository } from "@/lib/database";
 import { User } from "@/entities/User";
 import { Ticket } from "@/entities/Ticket";
 import { Category } from "@/entities/Category";
-import { HistoryAction, Role, TicketStatus } from "@/types";
+import { HistoryAction, Priority, Role, TicketStatus } from "@/types";
 import { StatCard } from "@/components/stat-card";
 import {
   BarChart3,
@@ -45,6 +45,7 @@ export async function AdminStatsContainer() {
     technicianRows,
     rating,
     avgResolutionRow,
+    priorityRows,
   ] = await Promise.all([
     ticketRepository.count(),
     userRepository.count(),
@@ -112,6 +113,13 @@ export async function AdminStatsContainer() {
       .andWhere("ticket.resolvedAt >= :since", { since: since30 })
       .andWhere("ticket.resolvedAt IS NOT NULL")
       .getRawOne(),
+    ticketRepository
+      .createQueryBuilder("ticket")
+      .select("ticket.prioridade", "priority")
+      .addSelect("COUNT(ticket.id)", "count")
+      .where("ticket.isArchived = :archived", { archived: false })
+      .groupBy("ticket.prioridade")
+      .getRawMany(),
   ]);
 
   const categoriesWithCount = categoryRows.map((row) => ({
@@ -133,6 +141,24 @@ export async function AdminStatsContainer() {
 
   const maxCatCount = Math.max(...categoriesWithCount.map((c) => c.ticketCount), 1);
   const maxTechCount = Math.max(...techniciansWithCount.map((t) => t.assignedTickets), 1);
+  const priorityOrder = [Priority.CRITICA, Priority.ALTA, Priority.MEDIA, Priority.BAIXA];
+  const priorityCounts = priorityOrder.map((priority) => ({
+    priority,
+    count: Number(priorityRows.find((row) => row.priority === priority)?.count ?? 0),
+  }));
+  const maxPriorityCount = Math.max(...priorityCounts.map((item) => item.count), 1);
+  const priorityLabels: Record<string, string> = {
+    CRITICA: "Crítica",
+    ALTA: "Alta",
+    MEDIA: "Média",
+    BAIXA: "Baixa",
+  };
+  const priorityColors: Record<string, string> = {
+    CRITICA: "bg-red-500",
+    ALTA: "bg-amber-500",
+    MEDIA: "bg-sky-500",
+    BAIXA: "bg-slate-400",
+  };
 
   return (
     <>
@@ -203,6 +229,26 @@ export async function AdminStatsContainer() {
               → Base de conhecimento
             </Link>
           </div>
+        </div>
+      </section>
+
+      <section className="rounded-3xl border border-border/60 bg-card p-6">
+        <h3 className="mb-4 text-sm font-black uppercase tracking-[0.16em] text-muted-foreground">Chamados por prioridade</h3>
+        <div className="grid gap-3 sm:grid-cols-4">
+          {priorityCounts.map((item) => (
+            <div key={item.priority} className="space-y-2 rounded-2xl border border-border/50 bg-muted/20 p-4">
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{priorityLabels[item.priority]}</p>
+                <p className="text-xl font-black">{item.count}</p>
+              </div>
+              <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                <div
+                  className={`h-1.5 rounded-full ${priorityColors[item.priority]}`}
+                  style={{ width: `${Math.round((item.count / maxPriorityCount) * 100)}%` }}
+                />
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 

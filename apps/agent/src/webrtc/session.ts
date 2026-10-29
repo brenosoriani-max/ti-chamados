@@ -13,6 +13,7 @@ let tempHtmlPath: string | null = null;
 // Named handlers so we can remove them cleanly on stop
 let ipcOfferHandler: ((e: Electron.IpcMainEvent, d: any) => void) | null = null;
 let ipcCandidateHandler: ((e: Electron.IpcMainEvent, d: any) => void) | null = null;
+let ipcIceHandler: ((e: Electron.IpcMainEvent, d: any) => void) | null = null;
 let ipcReadyHandler: ((e: Electron.IpcMainEvent) => void) | null = null;
 
 export async function startScreenShare(socket: Socket, payload: { sessaoId: string; monitorIndex?: number }) {
@@ -53,9 +54,16 @@ export async function startScreenShare(socket: Socket, payload: { sessaoId: stri
   ipcCandidateHandler = (_: Electron.IpcMainEvent, data: { sessaoId: string; candidate: RTCIceCandidateInit }) => {
     socket.emit(remoteSocketEvents.webRtcCandidate, data);
   };
+  ipcIceHandler = (_: Electron.IpcMainEvent, data: { sessaoId: string; state: string }) => {
+    socket.emit(remoteSocketEvents.qualityChange, {
+      sessaoId: data.sessaoId,
+      quality: data.state,
+    });
+  };
 
   ipcMain.on("webrtc:offer", ipcOfferHandler);
   ipcMain.on("webrtc:candidate", ipcCandidateHandler);
+  ipcMain.on("webrtc:ice-state", ipcIceHandler);
 
   // --- Step 3: Forward answer/candidates from socket → renderer ---
   const onAnswer = (data: { sessaoId: string; answer: RTCSessionDescriptionInit }) => {
@@ -129,6 +137,7 @@ ipcRenderer.once('webrtc:start', async (_, { sessaoId, screenId }) => {
       iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
         { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:stun2.l.google.com:19302' },
       ]
     });
 
@@ -148,6 +157,7 @@ ipcRenderer.once('webrtc:start', async (_, { sessaoId, screenId }) => {
 
     pc.oniceconnectionstatechange = () => {
       console.log('[peerWindow] ICE state: ' + pc.iceConnectionState);
+      ipcRenderer.send('webrtc:ice-state', { sessaoId, state: pc.iceConnectionState });
     };
     pc.onconnectionstatechange = () => {
       console.log('[peerWindow] connection state: ' + pc.connectionState);
@@ -208,6 +218,10 @@ export function stopScreenShare() {
   if (ipcCandidateHandler) {
     ipcMain.off("webrtc:candidate", ipcCandidateHandler);
     ipcCandidateHandler = null;
+  }
+  if (ipcIceHandler) {
+    ipcMain.off("webrtc:ice-state", ipcIceHandler);
+    ipcIceHandler = null;
   }
 
   // Remove socket listeners

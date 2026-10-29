@@ -4,14 +4,33 @@ import { KnowledgeArticle } from "@/entities/KnowledgeArticle";
 import { requireSession } from "@/lib/auth";
 import { Role } from "@/types";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    await requireSession();
     await initializeDatabase();
-    const articles = await getRepository(KnowledgeArticle).find({
-      relations: ["category"],
-      order: { createdAt: "DESC" },
-    });
 
+    const { searchParams } = new URL(request.url);
+    const categoryId = searchParams.get("categoryId") || undefined;
+    const q = searchParams.get("q") || undefined;
+
+    const repo = getRepository(KnowledgeArticle);
+    const qb = repo
+      .createQueryBuilder("article")
+      .leftJoinAndSelect("article.category", "category")
+      .orderBy("article.updatedAt", "DESC");
+
+    if (categoryId) {
+      qb.andWhere("article.categoryId = :categoryId", { categoryId });
+    }
+
+    if (q) {
+      qb.andWhere(
+        "(article.title LIKE :q OR article.content LIKE :q OR article.tags LIKE :q)",
+        { q: `%${q}%` }
+      );
+    }
+
+    const articles = await qb.getMany();
     return NextResponse.json({ articles });
   } catch {
     return NextResponse.json({ error: "Não foi possível carregar a base de conhecimento." }, { status: 500 });

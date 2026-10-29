@@ -91,6 +91,7 @@ export async function initializeDatabase(): Promise<DataSource> {
     try {
       await ds.initialize();
       await ensureTerminalSchema(ds);
+      await ensureFeatureSchema(ds);
       if (ds.entityMetadatas.length === 0) {
         throw new Error("TypeORM inicializou sem metadados de entidades.");
       }
@@ -168,6 +169,76 @@ async function ensureTerminalSchema(source: DataSource) {
   } catch (error) {
     console.warn(
       "Ajuste de schema de terminals ignorado:",
+      error instanceof Error ? error.message : error
+    );
+  } finally {
+    await qr.release();
+  }
+}
+
+async function ensureFeatureSchema(source: DataSource) {
+  const qr = source.createQueryRunner();
+  try {
+    await qr.connect();
+
+    const ticketTables: Array<{ [k: string]: string }> = await qr.query("SHOW TABLES LIKE 'tickets'");
+    if (ticketTables.length) {
+      const columns: Array<{ Field: string }> = await qr.query("SHOW COLUMNS FROM tickets");
+      const names = new Set(columns.map((column) => column.Field));
+      const ticketColumns: Array<[string, string]> = [
+        ["conclusaoAtendimento", "TEXT NULL"],
+        ["transferredFromUserId", "VARCHAR(36) NULL"],
+        ["transferredToUserId", "VARCHAR(36) NULL"],
+        ["transferReason", "VARCHAR(255) NULL"],
+        ["backupNotes", "TEXT NULL"],
+      ];
+      for (const [name, definition] of ticketColumns) {
+        if (!names.has(name)) {
+          await qr.query(`ALTER TABLE tickets ADD COLUMN ${name} ${definition}`);
+        }
+      }
+      if (names.has("transferReason")) {
+        await qr.query("ALTER TABLE tickets MODIFY transferReason VARCHAR(255) NULL");
+      }
+    }
+
+    const knowledgeTables: Array<{ [k: string]: string }> = await qr.query("SHOW TABLES LIKE 'knowledge_articles'");
+    if (!knowledgeTables.length) {
+      await qr.query(`
+        CREATE TABLE knowledge_articles (
+          id VARCHAR(36) NOT NULL,
+          title VARCHAR(255) NOT NULL,
+          content LONGTEXT NOT NULL,
+          tags VARCHAR(255) NULL,
+          categoryId VARCHAR(36) NULL,
+          createdAt DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+          updatedAt DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+          PRIMARY KEY (id),
+          INDEX IDX_knowledge_articles_categoryId (categoryId)
+        )
+      `);
+    }
+
+    const backupTables: Array<{ [k: string]: string }> = await qr.query("SHOW TABLES LIKE 'backup_logs'");
+    if (!backupTables.length) {
+      await qr.query(`
+        CREATE TABLE backup_logs (
+          id VARCHAR(36) NOT NULL,
+          triggeredById VARCHAR(36) NULL,
+          status ENUM('SUCESSO','ERRO','EM_ANDAMENTO') NOT NULL DEFAULT 'EM_ANDAMENTO',
+          filePath VARCHAR(500) NULL,
+          fileSizeBytes BIGINT NULL,
+          errorMessage TEXT NULL,
+          durationMs INT NULL,
+          backupType VARCHAR(50) NULL,
+          createdAt DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+          PRIMARY KEY (id)
+        )
+      `);
+    }
+  } catch (error) {
+    console.warn(
+      "Ajuste de schema de recursos ignorado:",
       error instanceof Error ? error.message : error
     );
   } finally {

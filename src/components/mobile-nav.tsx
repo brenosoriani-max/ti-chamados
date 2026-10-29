@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { Role } from "@/types";
 import { logoutAction } from "@/app/actions";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { cn } from "@/lib/utils";
 
 interface MobileNavProps {
@@ -67,8 +68,11 @@ export function MobileNav({ user }: MobileNavProps) {
           </div>
         </div>
 
-        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center font-bold text-xs text-primary border border-primary/25">
-          {user?.name?.charAt(0)}
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center font-bold text-xs text-primary border border-primary/25">
+            {user?.name?.charAt(0)}
+          </div>
         </div>
       </header>
 

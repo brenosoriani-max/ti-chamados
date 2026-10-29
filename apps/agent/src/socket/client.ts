@@ -6,7 +6,7 @@ export function createAgentSocket(serverUrl: string, token?: string) {
     auth: { token, role: "agent" },
     transports: ["websocket", "polling"],
     reconnection: false,
-    reconnectionAttempts: Infinity,
+    timeout: 12000,
   });
 }
 

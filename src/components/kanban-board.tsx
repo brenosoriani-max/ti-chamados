@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition, useMemo, useCallback, memo } from "react";
+import { useEffect, useState, useTransition, useMemo, useCallback, memo, useRef } from "react";
 import { 
   DndContext, 
   DragOverlay, 
@@ -25,7 +25,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Archive, Clock, ExternalLink, Hash, Inbox } from "lucide-react";
+import { Archive, Clock, ExternalLink, Hash, Inbox, SendToBack } from "lucide-react";
 import Link from "next/link";
 import { PriorityBadge } from "@/components/status-badge";
 import { TicketAssignSelect } from "@/components/ticket-assign-select";
@@ -42,7 +42,7 @@ interface KanbanBoardProps {
 
 const columns = ["ABERTO", "EM_ANALISE", "EM_ATENDIMENTO", "AGUARDANDO_CLIENTE", "RESOLVIDO"];
 
-const TicketCard = memo(({ ticket, techList, isOverlay, onArchive }: any) => {
+const TicketCard = memo(({ ticket, techList, isOverlay, onArchive, onTransfer }: any) => {
   const hours = hoursUntil(ticket.slaDueAt);
   const isOverdue = hours < 0;
 
@@ -68,6 +68,15 @@ const TicketCard = memo(({ ticket, techList, isOverlay, onArchive }: any) => {
           </div>
           
           <div className="flex items-center gap-1 shrink-0" onPointerDown={e => e.stopPropagation()}>
+             <Button
+               variant="ghost"
+               size="icon"
+               className="h-7 w-7 rounded-lg opacity-0 group-hover:opacity-100 hover:text-primary transition-all"
+               title="Transferir atendimento"
+               onClick={() => onTransfer?.(ticket.id)}
+             >
+               <SendToBack className="h-3 w-3" />
+             </Button>
              <Button 
                variant="ghost" 
                size="icon" 
@@ -110,7 +119,8 @@ const TicketCard = memo(({ ticket, techList, isOverlay, onArchive }: any) => {
             <TicketAssignSelect 
               ticketId={ticket.id} 
               assigneeId={ticket.assigneeId} 
-              techList={techList} 
+              techList={techList}
+              onTransferRequest={(id, toUserId) => onTransfer?.(id, toUserId)}
             />
           </div>
         </div>
@@ -121,7 +131,7 @@ const TicketCard = memo(({ ticket, techList, isOverlay, onArchive }: any) => {
 
 TicketCard.displayName = "TicketCard";
 
-const SortableTicket = memo(({ ticket, techList, onArchive }: any) => {
+const SortableTicket = memo(({ ticket, techList, onArchive, onTransfer }: any) => {
   const {
     attributes,
     listeners,
@@ -154,14 +164,14 @@ const SortableTicket = memo(({ ticket, techList, onArchive }: any) => {
 
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <TicketCard ticket={ticket} techList={techList} onArchive={onArchive} />
+      <TicketCard ticket={ticket} techList={techList} onArchive={onArchive} onTransfer={onTransfer} />
     </div>
   );
 });
 
 SortableTicket.displayName = "SortableTicket";
 
-const KanbanColumn = memo(({ id, title, tickets, techList, onArchive }: any) => {
+const KanbanColumn = memo(({ id, title, tickets, techList, onArchive, onTransfer }: any) => {
   const { setNodeRef } = useSortable({
     id: id,
     data: {
@@ -193,7 +203,7 @@ const KanbanColumn = memo(({ id, title, tickets, techList, onArchive }: any) => 
       <div className="flex min-h-[190px] flex-1 flex-col gap-3 overflow-y-auto pr-1 scrollbar-hide">
         <SortableContext items={ticketIds} strategy={verticalListSortingStrategy}>
           {tickets.map((ticket: any) => (
-            <SortableTicket key={ticket.id} ticket={ticket} techList={techList} onArchive={onArchive} />
+            <SortableTicket key={ticket.id} ticket={ticket} techList={techList} onArchive={onArchive} onTransfer={onTransfer} />
           ))}
         </SortableContext>
         {tickets.length === 0 && (
@@ -215,14 +225,19 @@ export function KanbanBoard({ initialTickets, techList }: KanbanBoardProps) {
   const [isPending, startTransition] = useTransition();
   const [finishTicketId, setFinishTicketId] = useState<string | null>(null);
   const [transferTicketId, setTransferTicketId] = useState<string | null>(null);
-  // Track the status before dragging to RESOLVIDO so we can revert on cancel
+  const [transferToUserId, setTransferToUserId] = useState<string | undefined>(undefined);
+  const [priorityFilter, setPriorityFilter] = useState("");
   const [preFinishStatus, setPreFinishStatus] = useState<string | null>(null);
+  const dragOriginStatus = useRef<Record<string, string>>({});
 
   useEffect(() => {
     setTickets(initialTickets);
   }, [initialTickets]);
 
-  const visibleTickets = useMemo(() => tickets.filter((ticket) => !ticket.isArchived), [tickets]);
+  const visibleTickets = useMemo(
+    () => tickets.filter((ticket) => !ticket.isArchived && (!priorityFilter || ticket.priority === priorityFilter)),
+    [tickets, priorityFilter]
+  );
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -233,7 +248,9 @@ export function KanbanBoard({ initialTickets, techList }: KanbanBoardProps) {
     const { active } = event;
     const ticket = tickets.find((t) => t.id === active.id);
     setActiveTicket(ticket);
-    // Haptic feedback if available
+    if (ticket) {
+      dragOriginStatus.current[ticket.id] = ticket.status;
+    }
     if (window.navigator?.vibrate) window.navigator.vibrate(5);
   }, [tickets]);
 
@@ -292,8 +309,7 @@ export function KanbanBoard({ initialTickets, techList }: KanbanBoardProps) {
     const newStatus = type === "Column" ? (overId as string) : targetTicket?.status;
 
     if (newStatus === "RESOLVIDO") {
-      // Store the previous status so we can revert if the dialog is cancelled
-      const prevStatus = tickets.find((t) => t.id === ticketId)?.status ?? null;
+      const prevStatus = dragOriginStatus.current[ticketId] ?? activeTicket?.status ?? null;
       setPreFinishStatus(prevStatus);
       setFinishTicketId(ticketId);
       return;
@@ -323,11 +339,8 @@ export function KanbanBoard({ initialTickets, techList }: KanbanBoardProps) {
     });
   }, []);
 
-  const finishTicket = useCallback((ticketId: string) => {
-    setFinishTicketId(ticketId);
-  }, []);
-
-  const transferTicket = useCallback((ticketId: string) => {
+  const transferTicket = useCallback((ticketId: string, toUserId?: string) => {
+    setTransferToUserId(toUserId);
     setTransferTicketId(ticketId);
   }, []);
 
@@ -339,6 +352,20 @@ export function KanbanBoard({ initialTickets, techList }: KanbanBoardProps) {
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
+      <div className="mb-4 flex justify-end">
+        <select
+          value={priorityFilter}
+          onChange={(event) => setPriorityFilter(event.target.value)}
+          className="h-9 rounded-xl border border-border/60 bg-background px-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground"
+          aria-label="Filtrar kanban por prioridade"
+        >
+          <option value="">Todas as prioridades</option>
+          <option value="CRITICA">Crítica</option>
+          <option value="ALTA">Alta</option>
+          <option value="MEDIA">Média</option>
+          <option value="BAIXA">Baixa</option>
+        </select>
+      </div>
       <div className="flex min-h-[530px] items-start gap-4 overflow-x-auto pb-3 scrollbar-hide">
         {columns.map((col) => (
           <KanbanColumn 
@@ -348,6 +375,7 @@ export function KanbanBoard({ initialTickets, techList }: KanbanBoardProps) {
             tickets={visibleTickets.filter((t) => t.status === col)}
             techList={techList}
             onArchive={handleArchive}
+            onTransfer={transferTicket}
           />
         ))}
       </div>
@@ -390,9 +418,13 @@ export function KanbanBoard({ initialTickets, techList }: KanbanBoardProps) {
       />
       <TicketTransferDialog
         open={Boolean(transferTicketId)}
-        onClose={() => setTransferTicketId(null)}
+        onClose={() => {
+          setTransferTicketId(null);
+          setTransferToUserId(undefined);
+        }}
         ticketId={transferTicketId ?? ""}
         techList={techList}
+        defaultToUserId={transferToUserId}
       />
     </DndContext>
   );

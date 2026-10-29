@@ -18,7 +18,7 @@ import { TicketAttachment } from "@/entities/TicketAttachment";
 import { KnowledgeArticle } from "@/entities/KnowledgeArticle";
 import { Category } from "@/entities/Category";
 import { Role, TicketStatus, HistoryAction } from "@/types";
-import { ticketCreateSchema, registerSchema } from "@/lib/validators";
+import { ticketCreateSchema, ticketFinishSchema, ticketTransferSchema, registerSchema } from "@/lib/validators";
 import { getDueDates, nextTicketNumber } from "@/lib/tickets";
 import { ensureUserTerminal } from "@/lib/remote/services/terminal-service";
 import { emitTerminalUpdated } from "@/lib/remote/socket-bridge";
@@ -363,7 +363,7 @@ export async function assignTicketAction(ticketId: string, assigneeId: string) {
   await initializeDatabase();
   
   const session = await getSession();
-  if (!session || session.role !== Role.ADMIN) {
+  if (!session || (session.role !== Role.ADMIN && session.role !== Role.TECNICO)) {
     throw new Error("Sem permissao");
   }
 
@@ -458,6 +458,11 @@ export async function finishTicketAction(ticketId: string, conclusion: string) {
     throw new Error("Sem permissao");
   }
 
+  const parsed = ticketFinishSchema.safeParse({ conclusion });
+  if (!parsed.success) {
+    throw new Error("Informe a conclusão do atendimento com pelo menos 10 caracteres.");
+  }
+
   const ticketRepository = getRepository(Ticket);
   const ticketHistoryRepository = getRepository(TicketHistory);
 
@@ -466,7 +471,7 @@ export async function finishTicketAction(ticketId: string, conclusion: string) {
 
   const oldStatus = ticket.status;
   ticket.status = TicketStatus.RESOLVIDO;
-  ticket.conclusaoAtendimento = conclusion.trim();
+  ticket.conclusaoAtendimento = parsed.data.conclusion.trim();
   ticket.resolvedAt = new Date();
   ticket.closedAt = undefined;
   ticket.updatedAt = new Date();
@@ -478,7 +483,7 @@ export async function finishTicketAction(ticketId: string, conclusion: string) {
     action: HistoryAction.FINALIZACAO,
     fromValue: oldStatus,
     toValue: TicketStatus.RESOLVIDO,
-    metadata: conclusion.trim(),
+    metadata: parsed.data.conclusion.trim(),
   }));
 
   revalidatePath("/suporte");
@@ -500,14 +505,15 @@ export async function transferTicketAction(ticketId: string, transferToUserId: s
   const ticket = await ticketRepository.findOne({ where: { id: ticketId } });
   if (!ticket) throw new Error("Chamado não encontrado");
 
-  if (!transferToUserId || !transferReason.trim()) {
+  const parsed = ticketTransferSchema.safeParse({ transferToUserId, transferReason });
+  if (!parsed.success) {
     throw new Error("É obrigatório informar o técnico e o motivo da transferência.");
   }
 
   ticket.transferredFromUserId = ticket.responsavelId ?? session.id;
-  ticket.transferredToUserId = transferToUserId;
-  ticket.transferReason = transferReason.trim();
-  ticket.responsavelId = transferToUserId;
+  ticket.transferredToUserId = parsed.data.transferToUserId;
+  ticket.transferReason = parsed.data.transferReason.trim();
+  ticket.responsavelId = parsed.data.transferToUserId;
   ticket.status = TicketStatus.EM_ATENDIMENTO;
   await ticketRepository.save(ticket);
 
@@ -516,8 +522,8 @@ export async function transferTicketAction(ticketId: string, transferToUserId: s
     actorId: session.id,
     action: HistoryAction.TROCA_RESPONSAVEL,
     fromValue: ticket.transferredFromUserId,
-    toValue: transferToUserId,
-    metadata: transferReason.trim(),
+    toValue: parsed.data.transferToUserId,
+    metadata: parsed.data.transferReason.trim(),
   }));
 
   revalidatePath("/suporte");

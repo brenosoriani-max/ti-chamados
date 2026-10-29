@@ -30,7 +30,12 @@ export const remoteSocketEvents = {
 export type RemoteSocketEvent = (typeof remoteSocketEvents)[keyof typeof remoteSocketEvents];
 
 export const defaultRtcConfiguration: RTCConfiguration = {
-  iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+  iceServers: [
+    { urls: "stun:stun.l.google.com:19302" },
+    { urls: "stun:stun1.l.google.com:19302" },
+    { urls: "stun:stun2.l.google.com:19302" },
+  ],
+  iceCandidatePoolSize: 4,
 };
 
 export const HEARTBEAT_INTERVAL_MS = 20_000;

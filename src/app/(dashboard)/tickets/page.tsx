@@ -14,12 +14,12 @@ import { getSession } from "@/lib/auth";
 export default async function TicketsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string; archived?: string }>;
+  searchParams: Promise<{ q?: string; status?: string; archived?: string; priority?: string }>;
 }) {
   const session = await getSession();
   if (!session) redirect("/login");
 
-  const { q, status, archived } = await searchParams;
+  const { q, status, archived, priority } = await searchParams;
   const isArchived = archived === "true";
 
   const filter = {
@@ -27,6 +27,7 @@ export default async function TicketsPage({
     ...(session.role === Role.CLIENTE ? { clienteId: session.id } : {}),
     ...(q ? { q } : {}),
     ...(status ? { status } : {}),
+    ...(priority ? { priority } : {}),
   };
 
   return (
@@ -89,6 +90,17 @@ export default async function TicketsPage({
               <option value="EM_ATENDIMENTO">Em Atendimento</option>
               <option value="AGUARDANDO_CLIENTE">Aguardando Cliente</option>
               <option value="RESOLVIDO">Resolvido</option>
+            </Select>
+            <Select
+              name="priority"
+              defaultValue={priority || ""}
+              className="h-11 w-full md:w-40 rounded-xl bg-background/50 border-border/40 text-[10px] font-bold uppercase tracking-widest"
+            >
+              <option value="">Todas prioridades</option>
+              <option value="CRITICA">Crítica</option>
+              <option value="ALTA">Alta</option>
+              <option value="MEDIA">Média</option>
+              <option value="BAIXA">Baixa</option>
             </Select>
             <Button type="submit" variant="secondary" className="h-11 rounded-xl px-6 text-[10px] font-black uppercase tracking-widest bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all">
               Filtrar

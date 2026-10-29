@@ -131,7 +131,7 @@ export class Ticket {
   @Column({ type: "varchar", length: 36, nullable: true })
   transferredToUserId?: string;
 
-  @Column({ type: "varchar", length: 80, nullable: true })
+  @Column({ type: "varchar", length: 255, nullable: true })
   transferReason?: string;
 
   @Column({ type: "text", nullable: true })

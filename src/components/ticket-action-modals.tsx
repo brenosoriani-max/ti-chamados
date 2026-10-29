@@ -94,25 +94,27 @@ export function TicketTransferDialog({
   onClose,
   ticketId,
   techList,
+  defaultToUserId,
   onSuccess,
 }: {
   open: boolean;
   onClose: () => void;
   ticketId: string;
   techList: Array<{ id: string; name: string }>;
+  defaultToUserId?: string;
   onSuccess?: () => void;
 }) {
-  const [toUserId, setToUserId] = useState(techList[0]?.id ?? "");
+  const [toUserId, setToUserId] = useState(defaultToUserId || techList[0]?.id || "");
   const [reason, setReason] = useState("");
   const [isPending, setIsPending] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
     if (open && techList.length > 0) {
-      setToUserId((current) => current || techList[0].id);
+      setToUserId(defaultToUserId || techList[0].id);
       setReason("");
     }
-  }, [open, techList]);
+  }, [open, techList, defaultToUserId]);
 
   if (!open) return null;
 
