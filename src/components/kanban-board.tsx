@@ -33,6 +33,7 @@ import { formatTicketStatus, hoursUntil, cn } from "@/lib/utils";
 import { updateTicketStatusAction, archiveTicketAction } from "@/app/actions";
 import { toast } from "sonner";
 import { messages } from "@/lib/messages";
+import { TicketFinishDialog, TicketTransferDialog } from "@/components/ticket-action-modals";
 
 interface KanbanBoardProps {
   initialTickets: any[];
@@ -212,6 +213,10 @@ export function KanbanBoard({ initialTickets, techList }: KanbanBoardProps) {
   const [tickets, setTickets] = useState(initialTickets);
   const [activeTicket, setActiveTicket] = useState<any>(null);
   const [isPending, startTransition] = useTransition();
+  const [finishTicketId, setFinishTicketId] = useState<string | null>(null);
+  const [transferTicketId, setTransferTicketId] = useState<string | null>(null);
+  // Track the status before dragging to RESOLVIDO so we can revert on cancel
+  const [preFinishStatus, setPreFinishStatus] = useState<string | null>(null);
 
   useEffect(() => {
     setTickets(initialTickets);
@@ -286,6 +291,14 @@ export function KanbanBoard({ initialTickets, techList }: KanbanBoardProps) {
     const targetTicket = tickets.find(t => t.id === overId);
     const newStatus = type === "Column" ? (overId as string) : targetTicket?.status;
 
+    if (newStatus === "RESOLVIDO") {
+      // Store the previous status so we can revert if the dialog is cancelled
+      const prevStatus = tickets.find((t) => t.id === ticketId)?.status ?? null;
+      setPreFinishStatus(prevStatus);
+      setFinishTicketId(ticketId);
+      return;
+    }
+
     if (newStatus && activeTicket?.status !== newStatus) {
       startTransition(async () => {
         try {
@@ -308,6 +321,14 @@ export function KanbanBoard({ initialTickets, techList }: KanbanBoardProps) {
         toast.error(messages.tickets.archiveError);
       }
     });
+  }, []);
+
+  const finishTicket = useCallback((ticketId: string) => {
+    setFinishTicketId(ticketId);
+  }, []);
+
+  const transferTicket = useCallback((ticketId: string) => {
+    setTransferTicketId(ticketId);
   }, []);
 
   return (
@@ -338,6 +359,41 @@ export function KanbanBoard({ initialTickets, techList }: KanbanBoardProps) {
           </div>
         ) : null}
       </DragOverlay>
+
+      <TicketFinishDialog
+        open={Boolean(finishTicketId)}
+        onClose={() => {
+          // Revert the ticket card visually to the previous status
+          if (finishTicketId && preFinishStatus) {
+            setTickets((prev) =>
+              prev.map((t) =>
+                t.id === finishTicketId ? { ...t, status: preFinishStatus } : t
+              )
+            );
+          }
+          setFinishTicketId(null);
+          setPreFinishStatus(null);
+        }}
+        ticketId={finishTicketId ?? ""}
+        onSuccess={() => {
+          // Keep the resolved status (already set by drag) and update local state
+          if (finishTicketId) {
+            setTickets((prev) =>
+              prev.map((t) =>
+                t.id === finishTicketId ? { ...t, status: "RESOLVIDO" } : t
+              )
+            );
+          }
+          setFinishTicketId(null);
+          setPreFinishStatus(null);
+        }}
+      />
+      <TicketTransferDialog
+        open={Boolean(transferTicketId)}
+        onClose={() => setTransferTicketId(null)}
+        ticketId={transferTicketId ?? ""}
+        techList={techList}
+      />
     </DndContext>
   );
 }

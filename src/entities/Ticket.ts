@@ -122,6 +122,21 @@ export class Ticket {
   @OneToMany(() => TicketHistory, (hist) => hist.ticket)
   history!: Relation<TicketHistory>[];
 
+  @Column({ type: "text", nullable: true })
+  conclusaoAtendimento?: string;
+
+  @Column({ type: "varchar", length: 36, nullable: true })
+  transferredFromUserId?: string;
+
+  @Column({ type: "varchar", length: 36, nullable: true })
+  transferredToUserId?: string;
+
+  @Column({ type: "varchar", length: 80, nullable: true })
+  transferReason?: string;
+
+  @Column({ type: "text", nullable: true })
+  backupNotes?: string;
+
   @CreateDateColumn()
   createdAt!: Date;
 

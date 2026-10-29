@@ -1,5 +1,5 @@
 import "reflect-metadata";
-import { Info, MessageSquare, History, Smartphone, ShieldCheck, Clock, User, ArrowLeft, ImageIcon, RefreshCcw } from "lucide-react";
+import { Info, MessageSquare, History, Smartphone, ShieldCheck, Clock, UserRound as UserIcon, ArrowLeft, ImageIcon, RefreshCcw } from "lucide-react";
 import { Role, TicketStatus } from "@/types";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -9,10 +9,12 @@ import { initializeDatabase, getRepository } from "@/lib/database";
 import { getSession } from "@/lib/auth";
 import { formatDateTime } from "@/lib/utils";
 import { Ticket } from "@/entities/Ticket";
+import { User as UserEntity } from "@/entities/User";
 import { TicketMessage } from "@/entities/TicketMessage";
 import { TicketHistory } from "@/entities/TicketHistory";
 import { TicketDiscussion } from "@/components/ticket-discussion";
 import { TicketReopenButton } from "@/components/ticket-reopen-button";
+import { TicketDetailActions } from "@/components/ticket-detail-actions";
 
 function formatHistoryBlock(date: Date) {
   const today = new Date();
@@ -55,6 +57,13 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
     (message: TicketMessage) => !message.isInternal || session.role !== Role.CLIENTE
   );
 
+  const techList = (await getRepository(UserEntity)
+    .find({
+      where: { role: Role.TECNICO },
+      select: ["id", "name"],
+      order: { name: "ASC" },
+    })) as Array<{ id: string; name: string }>;
+
   const historyByDay = ticket.history.reduce<Record<string, TicketHistory[]>>((acc, item) => {
     const label = formatHistoryBlock(new Date(item.createdAt));
     acc[label] = acc[label] ? [...acc[label], item] : [item];
@@ -62,6 +71,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
   }, {});
 
   const chatBlocked = isTicketClosed(ticket.status);
+  const canManageTicket = session.role === Role.TECNICO || session.role === Role.ADMIN;
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6">
@@ -75,6 +85,14 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
             <StatusBadge status={ticket.status} />
           </div>
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{ticket.titulo}</h1>
+          {canManageTicket && !chatBlocked && (
+            <TicketDetailActions
+              ticketId={ticket.id}
+              ticketStatus={ticket.status}
+              techList={techList}
+              canManage={canManageTicket}
+            />
+          )}
         </div>
         {chatBlocked && (
           <TicketReopenButton ticketId={ticket.id} />
@@ -178,7 +196,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
               <div className="space-y-4">
                 <div className="flex items-center justify-between text-xs py-2 border-b border-border/30">
                   <span className="text-muted-foreground font-medium flex items-center gap-2">
-                    <User className="h-3 w-3" /> Solicitante
+                    <UserIcon className="h-3 w-3" /> Solicitante
                   </span>
                   <span className="font-bold">{ticket.cliente.name.split(' ')[0]}</span>
                 </div>

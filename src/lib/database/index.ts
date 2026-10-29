@@ -1,5 +1,6 @@
 import "reflect-metadata";
 import { DataSource, type EntityTarget, type ObjectLiteral, type Repository } from "typeorm";
+import { BackupLog } from "@/entities/BackupLog";
 import { Category } from "@/entities/Category";
 import { Equipment } from "@/entities/Equipment";
 import { KnowledgeArticle } from "@/entities/KnowledgeArticle";
@@ -15,6 +16,7 @@ import { TicketMessage } from "@/entities/TicketMessage";
 import { User } from "@/entities/User";
 
 const ENTITIES = [
+  BackupLog,
   Category,
   Equipment,
   KnowledgeArticle,

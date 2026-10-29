@@ -27,7 +27,20 @@ export const ticketUpdateSchema = z.object({
   status: z.nativeEnum(TicketStatus).optional(),
   priority: z.nativeEnum(Priority).optional(),
   assigneeId: z.string().nullable().optional(),
+  conclusion: z.string().min(10).max(2000).optional(),
+  transferReason: z.string().min(3).max(255).optional(),
+  transferToUserId: z.string().min(1).optional(),
   tags: z.array(z.string().min(1).max(32)).optional()
+});
+
+export const ticketFinishSchema = z.object({
+  conclusion: z.string().min(10).max(2000),
+  status: z.nativeEnum(TicketStatus).default(TicketStatus.RESOLVIDO),
+});
+
+export const ticketTransferSchema = z.object({
+  transferToUserId: z.string().min(1),
+  transferReason: z.string().min(3).max(255),
 });
 
 export const messageCreateSchema = z.object({

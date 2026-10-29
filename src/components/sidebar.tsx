@@ -6,16 +6,16 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Ticket,
-  Settings,
   Users,
   LogOut,
   ChevronRight,
   PlusCircle,
-  History,
   MonitorDot,
   ShieldCheck,
-  LifeBuoy,
   Layout,
+  BookOpenText,
+  BarChart3,
+  Database,
 } from "lucide-react";
 import { Role } from "@/types";
 import { logoutAction } from "@/app/actions";
@@ -37,7 +37,10 @@ export function Sidebar({ user }: SidebarProps) {
 
   const adminNav = [
     { href: "/admin", label: "Dashboard Admin", icon: LayoutDashboard, show: user?.role === Role.ADMIN },
+    { href: "/admin/relatorios", label: "Relatórios", icon: BarChart3, show: user?.role === Role.ADMIN },
     { href: "/admin/usuarios", label: "Gestão de Equipe", icon: Users, show: user?.role === Role.ADMIN },
+    { href: "/admin/conhecimento", label: "Base de Conhecimento", icon: BookOpenText, show: user?.role === Role.ADMIN || user?.role === Role.TECNICO },
+    { href: "/admin/backup", label: "Backup", icon: Database, show: user?.role === Role.ADMIN },
   ].filter((i) => i.show);
 
   return (

@@ -7,6 +7,7 @@ export type TicketFilter = {
   isArchived?: boolean;
   clienteId?: string;
   status?: string;
+  priority?: string;
   q?: string;
 };
 
@@ -57,6 +58,10 @@ export function buildTicketQuery(filter: TicketFilter) {
     qb.andWhere("ticket.status = :status", { status: filter.status });
   }
 
+  if (filter.priority) {
+    qb.andWhere("ticket.prioridade = :priority", { priority: filter.priority });
+  }
+
   if (filter.q) {
     qb.andWhere(
       new Brackets((sub) => {
@@ -92,6 +97,10 @@ export async function countTickets(filter: TicketFilter) {
 
   if (filter.status) {
     qb.andWhere("ticket.status = :status", { status: filter.status });
+  }
+
+  if (filter.priority) {
+    qb.andWhere("ticket.prioridade = :priority", { priority: filter.priority });
   }
 
   if (filter.q) {

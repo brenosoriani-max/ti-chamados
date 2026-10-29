@@ -15,6 +15,8 @@ import { Equipment } from "@/entities/Equipment";
 import { Ticket } from "@/entities/Ticket";
 import { TicketHistory } from "@/entities/TicketHistory";
 import { TicketAttachment } from "@/entities/TicketAttachment";
+import { KnowledgeArticle } from "@/entities/KnowledgeArticle";
+import { Category } from "@/entities/Category";
 import { Role, TicketStatus, HistoryAction } from "@/types";
 import { ticketCreateSchema, registerSchema } from "@/lib/validators";
 import { getDueDates, nextTicketNumber } from "@/lib/tickets";
@@ -446,4 +448,79 @@ export async function deleteTicketAction(ticketId: string) {
   revalidatePath("/suporte");
   revalidatePath("/tickets");
   revalidatePath("/cliente");
+}
+
+export async function finishTicketAction(ticketId: string, conclusion: string) {
+  await initializeDatabase();
+
+  const session = await getSession();
+  if (!session || (session.role !== Role.TECNICO && session.role !== Role.ADMIN)) {
+    throw new Error("Sem permissao");
+  }
+
+  const ticketRepository = getRepository(Ticket);
+  const ticketHistoryRepository = getRepository(TicketHistory);
+
+  const ticket = await ticketRepository.findOne({ where: { id: ticketId } });
+  if (!ticket) throw new Error("Chamado não encontrado");
+
+  const oldStatus = ticket.status;
+  ticket.status = TicketStatus.RESOLVIDO;
+  ticket.conclusaoAtendimento = conclusion.trim();
+  ticket.resolvedAt = new Date();
+  ticket.closedAt = undefined;
+  ticket.updatedAt = new Date();
+  await ticketRepository.save(ticket);
+
+  await ticketHistoryRepository.save(ticketHistoryRepository.create({
+    ticketId: ticket.id,
+    actorId: session.id,
+    action: HistoryAction.FINALIZACAO,
+    fromValue: oldStatus,
+    toValue: TicketStatus.RESOLVIDO,
+    metadata: conclusion.trim(),
+  }));
+
+  revalidatePath("/suporte");
+  revalidatePath("/tickets");
+  revalidatePath(`/tickets/${ticketId}`);
+}
+
+export async function transferTicketAction(ticketId: string, transferToUserId: string, transferReason: string) {
+  await initializeDatabase();
+
+  const session = await getSession();
+  if (!session || (session.role !== Role.TECNICO && session.role !== Role.ADMIN)) {
+    throw new Error("Sem permissao");
+  }
+
+  const ticketRepository = getRepository(Ticket);
+  const ticketHistoryRepository = getRepository(TicketHistory);
+
+  const ticket = await ticketRepository.findOne({ where: { id: ticketId } });
+  if (!ticket) throw new Error("Chamado não encontrado");
+
+  if (!transferToUserId || !transferReason.trim()) {
+    throw new Error("É obrigatório informar o técnico e o motivo da transferência.");
+  }
+
+  ticket.transferredFromUserId = ticket.responsavelId ?? session.id;
+  ticket.transferredToUserId = transferToUserId;
+  ticket.transferReason = transferReason.trim();
+  ticket.responsavelId = transferToUserId;
+  ticket.status = TicketStatus.EM_ATENDIMENTO;
+  await ticketRepository.save(ticket);
+
+  await ticketHistoryRepository.save(ticketHistoryRepository.create({
+    ticketId: ticket.id,
+    actorId: session.id,
+    action: HistoryAction.TROCA_RESPONSAVEL,
+    fromValue: ticket.transferredFromUserId,
+    toValue: transferToUserId,
+    metadata: transferReason.trim(),
+  }));
+
+  revalidatePath("/suporte");
+  revalidatePath("/tickets");
+  revalidatePath(`/tickets/${ticketId}`);
 }

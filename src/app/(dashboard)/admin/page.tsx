@@ -31,12 +31,15 @@ export default async function AdminPage() {
 
       <Suspense fallback={
         <div className="space-y-10">
-          <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5">
-            {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-28 w-full rounded-3xl" />)}
+          <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+            {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-28 w-full rounded-3xl" />)}
+          </div>
+          <div className="grid gap-4 grid-cols-2 sm:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-20 w-full rounded-2xl" />)}
           </div>
           <div className="grid gap-10 lg:grid-cols-2">
-             <Skeleton className="h-[400px] w-full rounded-3xl" />
-             <Skeleton className="h-[400px] w-full rounded-3xl" />
+             <Skeleton className="h-[300px] w-full rounded-3xl" />
+             <Skeleton className="h-[300px] w-full rounded-3xl" />
           </div>
         </div>
       }>
