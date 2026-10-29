@@ -16,6 +16,8 @@ import {
   ChevronDown,
   ChevronUp,
   AlertTriangle,
+  Link as LinkIcon,
+  Paperclip,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -26,6 +28,9 @@ type Article = {
   content: string;
   tags?: string | null;
   categoryId?: string | null;
+  attachmentName?: string | null;
+  attachmentUrl?: string | null;
+  isQuickReply?: boolean;
   category?: { name: string } | null;
 };
 
@@ -46,13 +51,17 @@ function ArticleModal({
   article: Partial<Article> | null;
   categories: Category[];
   onClose: () => void;
-  onSave: (data: Partial<Article>) => Promise<void>;
+  onSave: (data: Partial<Article>, file?: File | null) => Promise<void>;
 }) {
   const [title, setTitle] = useState(article?.title ?? "");
   const [content, setContent] = useState(article?.content ?? "");
   const [tags, setTags] = useState(article?.tags ?? "");
   const [categoryId, setCategoryId] = useState(article?.categoryId ?? "");
+  const [attachmentName, setAttachmentName] = useState(article?.attachmentName ?? "");
+  const [attachmentUrl, setAttachmentUrl] = useState(article?.attachmentUrl ?? "");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [isQuickReply, setIsQuickReply] = useState(Boolean(article?.isQuickReply));
 
   function handleSave() {
     if (!title.trim() || !content.trim()) {
@@ -60,7 +69,18 @@ function ArticleModal({
       return;
     }
     startTransition(async () => {
-      await onSave({ title: title.trim(), content: content.trim(), tags: tags.trim(), categoryId: categoryId || null });
+      await onSave(
+        {
+          title: title.trim(),
+          content: content.trim(),
+          tags: tags.trim(),
+          categoryId: categoryId || null,
+          attachmentName: attachmentName.trim() || selectedFile?.name || undefined,
+          attachmentUrl: attachmentUrl.trim() || undefined,
+          isQuickReply,
+        },
+        selectedFile
+      );
     });
   }
 
@@ -140,6 +160,58 @@ function ArticleModal({
               />
             </div>
           </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                Documento do artigo
+              </label>
+              <div className="flex items-center gap-2">
+                <label className="inline-flex cursor-pointer items-center justify-center h-11 rounded-xl border border-border bg-background px-3 text-xs font-bold uppercase tracking-[0.12em] text-foreground hover:bg-muted transition-colors">
+                  <Paperclip className="mr-2 h-3.5 w-3.5" />
+                  Selecionar arquivo
+                  <input
+                    type="file"
+                    className="hidden"
+                    onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
+                  />
+                </label>
+                <span className="truncate text-[11px] text-muted-foreground">
+                  {selectedFile ? selectedFile.name : article?.attachmentName || "Nenhum arquivo"}
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                URL do documento
+              </label>
+              <input
+                value={attachmentUrl}
+                onChange={(e) => setAttachmentUrl(e.target.value)}
+                placeholder="https://..."
+                className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none focus:border-primary transition-colors"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">
+              Tipo de conteúdo
+            </label>
+            <div className="flex items-center justify-between rounded-xl border border-border bg-background p-3">
+              <div>
+                <p className="text-sm font-semibold text-foreground">Resposta automática</p>
+                <p className="text-[10px] text-muted-foreground">Usar como modelo rápido para clientes/técnicos</p>
+              </div>
+              <input
+                type="checkbox"
+                checked={isQuickReply}
+                onChange={(e) => setIsQuickReply(e.target.checked)}
+                className="h-5 w-5 rounded border-border text-primary"
+              />
+            </div>
+          </div>
         </div>
 
         <div className="flex justify-end gap-2 p-6 pt-4 border-t border-border/60">
@@ -212,15 +284,17 @@ export function KnowledgeBase({ articles: initialArticles, categories = [], canE
   const [editingArticle, setEditingArticle] = useState<Partial<Article> | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Article | null>(null);
+  const [quickReplyOnly, setQuickReplyOnly] = useState(false);
 
   const filtered = useMemo(() => {
     return articles.filter((article) => {
       const haystack = `${article.title} ${article.content} ${article.tags ?? ""} ${article.category?.name ?? ""}`.toLowerCase();
       const matchesQuery = !query || haystack.includes(query.toLowerCase());
       const matchesCategory = !categoryFilter || article.categoryId === categoryFilter;
-      return matchesQuery && matchesCategory;
+      const matchesQuickReply = !quickReplyOnly || Boolean(article.isQuickReply);
+      return matchesQuery && matchesCategory && matchesQuickReply;
     });
-  }, [articles, query, categoryFilter]);
+  }, [articles, query, categoryFilter, quickReplyOnly]);
 
   function openCreate() {
     setEditingArticle({});
@@ -232,16 +306,24 @@ export function KnowledgeBase({ articles: initialArticles, categories = [], canE
     setIsModalOpen(true);
   }
 
-  async function handleSave(data: Partial<Article>) {
+  async function handleSave(data: Partial<Article>, file?: File | null) {
     try {
       const isEdit = Boolean(editingArticle?.id);
       const url = isEdit ? `/api/knowledge/${editingArticle!.id}` : "/api/knowledge";
       const method = isEdit ? "PATCH" : "POST";
 
+      const formData = new FormData();
+      Object.entries(data).forEach(([key, value]) => {
+        if (value === undefined || value === null || value === "") return;
+        formData.append(key, String(value));
+      });
+      if (file) {
+        formData.append("attachment", file);
+      }
+
       const response = await fetch(url, {
         method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: formData,
       });
 
       if (!response.ok) {
@@ -250,7 +332,6 @@ export function KnowledgeBase({ articles: initialArticles, categories = [], canE
       }
 
       const { article: saved } = await response.json();
-      // Find category name from categories list
       const cat = categories.find((c) => c.id === saved.categoryId);
       const enriched: Article = { ...saved, category: cat ? { name: cat.name } : null };
 
@@ -329,6 +410,15 @@ export function KnowledgeBase({ articles: initialArticles, categories = [], canE
             ))}
           </select>
         )}
+        <button
+          type="button"
+          onClick={() => setQuickReplyOnly((current) => !current)}
+          className={`h-10 rounded-xl border px-3 text-xs font-bold uppercase tracking-[0.12em] ${
+            quickReplyOnly ? "border-primary bg-primary/10 text-primary" : "border-border bg-background text-muted-foreground"
+          }`}
+        >
+          Respostas automáticas
+        </button>
       </div>
 
       {/* Article list */}
@@ -356,22 +446,20 @@ export function KnowledgeBase({ articles: initialArticles, categories = [], canE
             return (
               <div
                 key={article.id}
-                className="rounded-2xl border border-border/60 bg-muted/20 transition-all hover:border-border hover:bg-muted/30"
+                className="rounded-2xl border border-border/50 bg-background/60 transition-all hover:border-border"
               >
-                {/* Article header */}
-                <div className="flex items-start justify-between gap-3 p-4">
+                <div className="flex items-start justify-between gap-3 p-3.5">
                   <button
                     type="button"
                     className="flex-1 text-left"
                     onClick={() => setExpandedId(isExpanded ? null : article.id)}
                   >
-                    <div className="flex items-start gap-2">
-                      <div className="mt-0.5 flex-1">
-                        <p className="text-sm font-bold text-foreground leading-snug">{article.title}</p>
-                        <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-foreground leading-snug">{article.title}</p>
+                        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                           {article.category && (
-                            <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.16em] text-primary/70">
-                              <FolderOpen className="h-2.5 w-2.5" />
+                            <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
                               {article.category.name}
                             </span>
                           )}
@@ -380,9 +468,8 @@ export function KnowledgeBase({ articles: initialArticles, categories = [], canE
                               {tagList.map((tag) => (
                                 <span
                                   key={tag}
-                                  className="flex items-center gap-1 rounded-full border border-primary/20 bg-primary/5 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em] text-primary"
+                                  className="rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[8px] font-medium uppercase tracking-[0.08em] text-muted-foreground"
                                 >
-                                  <Tag className="h-2 w-2" />
                                   {tag}
                                 </span>
                               ))}
@@ -390,6 +477,7 @@ export function KnowledgeBase({ articles: initialArticles, categories = [], canE
                           )}
                         </div>
                       </div>
+
                       {isExpanded ? (
                         <ChevronUp className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                       ) : (
@@ -403,7 +491,7 @@ export function KnowledgeBase({ articles: initialArticles, categories = [], canE
                       <button
                         type="button"
                         onClick={() => openEdit(article)}
-                        className="h-7 w-7 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+                        className="h-7 w-7 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors"
                         title="Editar artigo"
                       >
                         <Pencil className="h-3.5 w-3.5" />
@@ -420,16 +508,15 @@ export function KnowledgeBase({ articles: initialArticles, categories = [], canE
                   )}
                 </div>
 
-                {/* Expanded content */}
                 {isExpanded && (
-                  <div className="border-t border-border/40 px-4 py-4">
+                  <div className="border-t border-border/40 px-3.5 py-3">
                     <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
                       {article.content}
                     </p>
                     <div className="mt-3 flex items-center gap-2">
                       <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                      <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-600">
-                        Solução verificada
+                      <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-emerald-600">
+                        {article.isQuickReply ? "Resposta automática" : "Solução verificada"}
                       </span>
                     </div>
                   </div>
@@ -440,7 +527,6 @@ export function KnowledgeBase({ articles: initialArticles, categories = [], canE
         )}
       </div>
 
-      {/* Modals */}
       {isModalOpen && (
         <ArticleModal
           article={editingArticle}

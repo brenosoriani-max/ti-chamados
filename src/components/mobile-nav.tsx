@@ -35,6 +35,7 @@ export function MobileNav({ user }: MobileNavProps) {
   const primaryNav = [
     { href: "/cliente", label: "Novo Chamado", icon: PlusCircle, show: user?.role === Role.CLIENTE || user?.role === Role.ADMIN },
     { href: "/tickets", label: "Meus Chamados", icon: Ticket, show: true },
+    { href: "/admin/conhecimento", label: "Base de Conhecimento", icon: BookOpenText, show: user?.role === Role.ADMIN || user?.role === Role.TECNICO },
     { href: "/suporte", label: "Fila de Suporte", icon: Layout, show: user?.role === Role.TECNICO || user?.role === Role.ADMIN },
     { href: "/terminais", label: "Terminais", icon: MonitorDot, show: user?.role === Role.TECNICO || user?.role === Role.ADMIN },
   ].filter(i => i.show);
@@ -43,7 +44,6 @@ export function MobileNav({ user }: MobileNavProps) {
     { href: "/admin", label: "Dashboard Admin", icon: LayoutDashboard, show: user?.role === Role.ADMIN },
     { href: "/admin/relatorios", label: "Relatórios", icon: BarChart3, show: user?.role === Role.ADMIN },
     { href: "/admin/usuarios", label: "Gestão de Equipe", icon: Users, show: user?.role === Role.ADMIN },
-    { href: "/admin/conhecimento", label: "Base de Conhecimento", icon: BookOpenText, show: user?.role === Role.ADMIN || user?.role === Role.TECNICO },
     { href: "/admin/backup", label: "Backup", icon: Database, show: user?.role === Role.ADMIN },
   ].filter(i => i.show);
 

@@ -26,6 +26,9 @@ async function KnowledgeContent() {
     content: a.content,
     tags: a.tags ?? null,
     categoryId: a.categoryId ?? null,
+    attachmentName: a.attachmentName ?? null,
+    attachmentUrl: a.attachmentUrl ?? null,
+    isQuickReply: Boolean(a.isQuickReply),
     category: a.category ? { name: a.category.name } : null,
   }));
 
@@ -46,7 +49,7 @@ export default async function KnowledgePage() {
   if (session.role !== Role.ADMIN && session.role !== Role.TECNICO) redirect("/cliente");
 
   return (
-    <div className="flex flex-col gap-8 max-w-4xl">
+    <div className="flex flex-col gap-8 ">
       <header className="space-y-1">
         <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-widest leading-none mb-2">
           <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />

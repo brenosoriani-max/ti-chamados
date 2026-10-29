@@ -212,12 +212,27 @@ async function ensureFeatureSchema(source: DataSource) {
           content LONGTEXT NOT NULL,
           tags VARCHAR(255) NULL,
           categoryId VARCHAR(36) NULL,
+          attachmentName VARCHAR(255) NULL,
+          attachmentUrl TEXT NULL,
+          isQuickReply BOOLEAN NOT NULL DEFAULT FALSE,
           createdAt DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
           updatedAt DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
           PRIMARY KEY (id),
           INDEX IDX_knowledge_articles_categoryId (categoryId)
         )
       `);
+    } else {
+      const knowledgeColumns: Array<{ Field: string; Type: string }> = await qr.query("SHOW COLUMNS FROM knowledge_articles");
+      const knowledgeNames = new Set(knowledgeColumns.map((column) => column.Field));
+      for (const [name, definition] of [
+        ["attachmentName", "VARCHAR(255) NULL"],
+        ["attachmentUrl", "TEXT NULL"],
+        ["isQuickReply", "BOOLEAN NOT NULL DEFAULT FALSE"],
+      ] as const) {
+        if (!knowledgeNames.has(name)) {
+          await qr.query(`ALTER TABLE knowledge_articles ADD COLUMN ${name} ${definition}`);
+        }
+      }
     }
 
     const backupTables: Array<{ [k: string]: string }> = await qr.query("SHOW TABLES LIKE 'backup_logs'");

@@ -7,6 +7,9 @@ export type KnowledgeMatch = {
   content: string;
   tags?: string | null;
   categoryId?: string | null;
+  attachmentName?: string | null;
+  attachmentUrl?: string | null;
+  isQuickReply?: boolean;
   category?: { name: string } | null;
   score: number;
 };
@@ -54,6 +57,9 @@ export async function findRelatedKnowledgeArticles(query: {
       content: article.content,
       tags: article.tags ?? null,
       categoryId: article.categoryId ?? null,
+      attachmentName: article.attachmentName ?? null,
+      attachmentUrl: article.attachmentUrl ?? null,
+      isQuickReply: Boolean(article.isQuickReply),
       category: article.category ? { name: article.category.name } : null,
       score: scoreKnowledgeArticle(article, query),
     }))

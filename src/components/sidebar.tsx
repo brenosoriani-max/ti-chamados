@@ -31,6 +31,7 @@ export function Sidebar({ user }: SidebarProps) {
   const primaryNav = [
     { href: "/cliente", label: "Novo Chamado", icon: PlusCircle, show: user?.role === Role.CLIENTE || user?.role === Role.ADMIN },
     { href: "/tickets", label: "Meus Chamados", icon: Ticket, show: true },
+    { href: "/admin/conhecimento", label: "Base de Conhecimento", icon: BookOpenText, show: user?.role === Role.ADMIN || user?.role === Role.TECNICO },
     { href: "/suporte", label: "Fila de Suporte", icon: Layout, show: user?.role === Role.TECNICO || user?.role === Role.ADMIN },
     { href: "/terminais", label: "Terminais", icon: MonitorDot, show: user?.role === Role.TECNICO || user?.role === Role.ADMIN },
   ].filter((i) => i.show);
@@ -39,7 +40,6 @@ export function Sidebar({ user }: SidebarProps) {
     { href: "/admin", label: "Dashboard Admin", icon: LayoutDashboard, show: user?.role === Role.ADMIN },
     { href: "/admin/relatorios", label: "Relatórios", icon: BarChart3, show: user?.role === Role.ADMIN },
     { href: "/admin/usuarios", label: "Gestão de Equipe", icon: Users, show: user?.role === Role.ADMIN },
-    { href: "/admin/conhecimento", label: "Base de Conhecimento", icon: BookOpenText, show: user?.role === Role.ADMIN || user?.role === Role.TECNICO },
     { href: "/admin/backup", label: "Backup", icon: Database, show: user?.role === Role.ADMIN },
   ].filter((i) => i.show);
 
@@ -126,22 +126,10 @@ export function Sidebar({ user }: SidebarProps) {
 
       <div className="p-3 mt-auto border-t border-border/60">
         <div className="bg-muted/35 rounded-2xl p-3 border border-border/50">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary/15 via-primary/5 to-background flex items-center justify-center text-sm font-bold text-primary border border-primary/10">
-              {user?.name?.charAt(0)?.toUpperCase() || "U"}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold truncate text-foreground leading-none mb-1.5">{user?.name || "Usuário"}</p>
-              <div className="flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-[0.16em]">{user?.role || "Usuário"}</p>
-              </div>
-            </div>
-          </div>
           <form action={logoutAction}>
             <button className="w-full h-10 flex items-center justify-center gap-2 rounded-xl bg-background border border-border/60 text-[11px] font-semibold text-muted-foreground hover:bg-destructive hover:text-destructive-foreground hover:border-destructive/20 transition-all duration-300">
               <LogOut className="h-4 w-4" />
-              Sair da conta
+              Sair
             </button>
           </form>
         </div>

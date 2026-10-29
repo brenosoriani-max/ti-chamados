@@ -1,7 +1,7 @@
 "use client";
 
-import { Send, Loader2, Paperclip, X } from "lucide-react";
-import { useRef, useState } from "react";
+import { Send, Loader2, Paperclip, X, Sparkles, FileText } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -37,8 +37,27 @@ export function TicketMessageForm({
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [knowledgeQuickInsert, setKnowledgeQuickInsert] = useState<{ title: string; content: string } | null>(null);
 
   const isFormDisabled = disabled || isLoading;
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handler = (event: Event) => {
+      const customEvent = event as CustomEvent<{ title?: string; content?: string }>;
+      const detail = customEvent.detail ?? {};
+      if (!detail.content) return;
+      setKnowledgeQuickInsert({
+        title: detail.title ?? "Resposta sugerida",
+        content: detail.content,
+      });
+      setMessage(detail.content);
+    };
+
+    window.addEventListener("ti:insert-knowledge", handler);
+    return () => window.removeEventListener("ti:insert-knowledge", handler);
+  }, []);
 
   async function handleSubmit(e?: React.FormEvent<HTMLFormElement>) {
     e?.preventDefault();
@@ -211,6 +230,29 @@ export function TicketMessageForm({
               disabled={isFormDisabled}
               className="h-5 w-5 cursor-pointer rounded-lg border-white/10 bg-black/20 text-primary focus:ring-primary/50"
             />
+          </div>
+        )}
+
+        {knowledgeQuickInsert && (
+          <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 text-left">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-primary">
+                <Sparkles className="h-3 w-3" />
+                Resposta sugerida
+              </div>
+              <button
+                type="button"
+                onClick={() => setKnowledgeQuickInsert(null)}
+                className="text-muted-foreground hover:text-foreground"
+                aria-label="Fechar resposta sugerida"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+            <p className="text-xs font-semibold text-foreground">{knowledgeQuickInsert.title}</p>
+            <p className="mt-1 whitespace-pre-wrap text-[11px] leading-relaxed text-muted-foreground">
+              {knowledgeQuickInsert.content}
+            </p>
           </div>
         )}
       </div>

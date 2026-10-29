@@ -26,6 +26,15 @@ export class KnowledgeArticle {
   @Column({ type: "varchar", length: 36, nullable: true })
   categoryId?: string;
 
+  @Column({ type: "varchar", length: 255, nullable: true })
+  attachmentName?: string;
+
+  @Column({ type: "text", nullable: true })
+  attachmentUrl?: string;
+
+  @Column({ type: "boolean", default: false })
+  isQuickReply!: boolean;
+
   @ManyToOne(() => Category, (cat) => cat.articles, { onDelete: "SET NULL", nullable: true })
   category?: Relation<Category>;
 

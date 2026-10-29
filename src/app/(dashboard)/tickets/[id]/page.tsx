@@ -60,6 +60,10 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
     (message: TicketMessage) => !message.isInternal || session.role !== Role.CLIENTE
   );
 
+  const chatBlocked = isTicketClosed(ticket.status);
+  const canManageTicket = session.role === Role.TECNICO || session.role === Role.ADMIN;
+  const showKnowledge = canManageTicket && !chatBlocked;
+
   const [techList, relatedArticles] = await Promise.all([
     getRepository(UserEntity)
       .find({
@@ -68,22 +72,34 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
         order: { name: "ASC" },
       })
       .then((users) => users.map(({ id, name }) => ({ id, name }))) as Promise<Array<{ id: string; name: string }>>,
-    findRelatedKnowledgeArticles({
-      title: ticket.titulo,
-      description: ticket.descricao,
-      categoryId: ticket.categoryId,
-      limit: 4,
-    }),
+    // só busca os artigos se eles realmente serão exibidos
+    showKnowledge
+      ? findRelatedKnowledgeArticles({
+          title: ticket.titulo,
+          description: ticket.descricao,
+          categoryId: ticket.categoryId,
+          limit: 4,
+        })
+      : Promise.resolve([]),
   ]);
+
+  // Serialização para o Client Component (evita o erro "Only plain objects...")
+  const relatedArticlesDto = relatedArticles.map((a) => ({
+    id: a.id,
+    title: a.title,
+    content: a.content,
+    tags: a.tags ?? null,
+    attachmentName: a.attachmentName ?? null,
+    attachmentUrl: a.attachmentUrl ?? null,
+    isQuickReply: Boolean(a.isQuickReply),
+    category: a.category ? { name: a.category.name } : null,
+  }));
 
   const historyByDay = ticket.history.reduce<Record<string, TicketHistory[]>>((acc, item) => {
     const label = formatHistoryBlock(new Date(item.createdAt));
     acc[label] = acc[label] ? [...acc[label], item] : [item];
     return acc;
   }, {});
-
-  const chatBlocked = isTicketClosed(ticket.status);
-  const canManageTicket = session.role === Role.TECNICO || session.role === Role.ADMIN;
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6">
@@ -173,8 +189,6 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
             </div>
           )}
 
-          {canManageTicket && <RelatedKnowledge articles={relatedArticles} />}
-
           {ticket.attachments.length > 0 && (
             <Card className="overflow-hidden rounded-3xl border-border/60 bg-card shadow-sm">
               <CardHeader className="border-b border-border/60 pb-4">
@@ -200,7 +214,10 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
                 Discussão
               </CardTitle>
             </CardHeader>
-            <CardContent className="pt-6">
+            <CardContent className="space-y-6 pt-6">
+              {/* Respostas rápidas na área do chat (somente técnico/admin, chamado aberto) */}
+             
+
               <TicketDiscussion
                 ticketId={ticket.id}
                 currentUserId={session.id}
@@ -228,6 +245,10 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
                 userRole={session.role}
                 isChatBlocked={chatBlocked}
               />
+
+               {showKnowledge && relatedArticlesDto.length > 0 && (
+                <RelatedKnowledge articles={relatedArticlesDto} compact />
+              )}  
             </CardContent>
           </Card>
         </div>
