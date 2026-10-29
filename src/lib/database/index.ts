@@ -92,6 +92,7 @@ export async function initializeDatabase(): Promise<DataSource> {
       await ds.initialize();
       await ensureTerminalSchema(ds);
       await ensureFeatureSchema(ds);
+      await ensureTicketHistorySchema(ds);
       if (ds.entityMetadatas.length === 0) {
         throw new Error("TypeORM inicializou sem metadados de entidades.");
       }
@@ -239,6 +240,31 @@ async function ensureFeatureSchema(source: DataSource) {
   } catch (error) {
     console.warn(
       "Ajuste de schema de recursos ignorado:",
+      error instanceof Error ? error.message : error
+    );
+  } finally {
+    await qr.release();
+  }
+}
+
+async function ensureTicketHistorySchema(source: DataSource) {
+  const qr = source.createQueryRunner();
+  try {
+    await qr.connect();
+    const tables: Array<{ [k: string]: string }> = await qr.query("SHOW TABLES LIKE 'ticket_histories'");
+    if (!tables.length) return;
+
+    const columns: Array<{ Field: string; Type: string }> = await qr.query("SHOW COLUMNS FROM ticket_histories");
+    const byName = new Map(columns.map((c) => [c.Field, c.Type.toLowerCase()]));
+
+    if (byName.get("action") && !byName.get("action")!.includes("varchar")) {
+      await qr.query("ALTER TABLE ticket_histories MODIFY action VARCHAR(255) NOT NULL");
+    } else if (byName.get("action") && byName.get("action")!.includes("varchar") && !byName.get("action")!.includes("255")) {
+      await qr.query("ALTER TABLE ticket_histories MODIFY action VARCHAR(255) NOT NULL");
+    }
+  } catch (error) {
+    console.warn(
+      "Ajuste de schema de ticket_histories ignorado:",
       error instanceof Error ? error.message : error
     );
   } finally {

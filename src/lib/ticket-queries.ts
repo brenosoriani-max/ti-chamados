@@ -6,6 +6,7 @@ import { getRepository } from "@/lib/database";
 export type TicketFilter = {
   isArchived?: boolean;
   clienteId?: string;
+  assigneeId?: string | null;
   status?: string;
   priority?: string;
   q?: string;
@@ -21,6 +22,7 @@ export function mapTicketListItem(ticket: Ticket) {
     isArchived: ticket.isArchived,
     customerId: ticket.clienteId,
     assigneeId: ticket.responsavelId ?? null,
+    assigneeName: ticket.responsavel?.name ?? "Nenhum",
     slaDueAt: ticket.slaDueAt,
     updatedAt: ticket.updatedAt,
     createdAt: ticket.createdAt,
@@ -42,9 +44,21 @@ export function buildTicketQuery(filter: TicketFilter) {
   const qb = repo
     .createQueryBuilder("ticket")
     .leftJoin("ticket.cliente", "cliente")
+    .leftJoin("ticket.responsavel", "responsavel")
     .leftJoin("ticket.category", "category")
     .leftJoin("ticket.equipment", "equipment")
-    .addSelect(["cliente.id", "cliente.name", "category.id", "category.name", "equipment.id", "equipment.machineName", "equipment.hostname", "equipment.ipAddress"]);
+    .addSelect([
+      "cliente.id",
+      "cliente.name",
+      "responsavel.id",
+      "responsavel.name",
+      "category.id",
+      "category.name",
+      "equipment.id",
+      "equipment.machineName",
+      "equipment.hostname",
+      "equipment.ipAddress",
+    ]);
 
   if (filter.isArchived !== undefined) {
     qb.andWhere("ticket.isArchived = :isArchived", { isArchived: filter.isArchived });
@@ -52,6 +66,10 @@ export function buildTicketQuery(filter: TicketFilter) {
 
   if (filter.clienteId) {
     qb.andWhere("ticket.clienteId = :clienteId", { clienteId: filter.clienteId });
+  }
+
+  if (filter.assigneeId !== undefined) {
+    qb.andWhere("ticket.responsavelId = :assigneeId", { assigneeId: filter.assigneeId || null });
   }
 
   if (filter.status) {
@@ -93,6 +111,10 @@ export async function countTickets(filter: TicketFilter) {
 
   if (filter.clienteId) {
     qb.andWhere("ticket.clienteId = :clienteId", { clienteId: filter.clienteId });
+  }
+
+  if (filter.assigneeId !== undefined) {
+    qb.andWhere("ticket.responsavelId = :assigneeId", { assigneeId: filter.assigneeId || null });
   }
 
   if (filter.status) {

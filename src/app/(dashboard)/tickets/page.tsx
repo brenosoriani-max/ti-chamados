@@ -14,13 +14,14 @@ import { getSession } from "@/lib/auth";
 export default async function TicketsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string; archived?: string; priority?: string }>;
+  searchParams: Promise<{ q?: string; status?: string; archived?: string; priority?: string; view?: string }>;
 }) {
   const session = await getSession();
   if (!session) redirect("/login");
 
-  const { q, status, archived, priority } = await searchParams;
+  const { q, status, archived, priority, view } = await searchParams;
   const isArchived = archived === "true";
+  const isStaff = session.role !== Role.CLIENTE;
 
   const filter = {
     isArchived,
@@ -28,6 +29,7 @@ export default async function TicketsPage({
     ...(q ? { q } : {}),
     ...(status ? { status } : {}),
     ...(priority ? { priority } : {}),
+    ...(view === "assigned" && isStaff ? { assigneeId: session.id } : {}),
   };
 
   return (
@@ -60,7 +62,26 @@ export default async function TicketsPage({
       </Suspense>
 
       <div className="bg-card/40 border border-border/20 p-4 rounded-3xl backdrop-blur-md">
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          {isStaff && (
+            <>
+              <Link 
+                href="/tickets?view=all" 
+                className={`px-4 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${view === "all" ? "bg-primary text-white" : "bg-muted text-primary"}`}
+              >
+                Todos
+              </Link>
+              <Link 
+                href="/tickets?view=assigned" 
+                className={`px-4 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${view === "assigned" ? "bg-primary text-white" : "bg-muted text-primary"}`}
+              >
+                Atribuídos a mim
+              </Link>
+            </>
+          )}
+        </div>
         <form action="/tickets" method="GET" className="flex flex-col md:flex-row items-center gap-4">
+          <input type="hidden" name="view" value={view} />
           <div className="relative flex-1 w-full">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
             <Input 

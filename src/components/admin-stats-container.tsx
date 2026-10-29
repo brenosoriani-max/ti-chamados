@@ -30,7 +30,6 @@ export async function AdminStatsContainer() {
   const historyRepository = getRepository(TicketHistory);
   const now = new Date();
 
-  // Compute the last 30 days window for resolution metric
   const since30 = new Date();
   since30.setDate(since30.getDate() - 30);
 
@@ -162,86 +161,73 @@ export async function AdminStatsContainer() {
 
   return (
     <>
-      {/* Primary KPIs */}
-      <section className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
         <StatCard label="Total Chamados" value={totalTickets} icon={BarChart3} />
         <StatCard label="Usuários" value={totalUsers} icon={Users} tone="text-sky-400" />
-        <StatCard
-          label="SLA em dia"
-          value={slaOk}
-          icon={ShieldCheck}
-          tone="text-emerald-400"
-        />
-        <StatCard
-          label="SLA violado"
-          value={slaViolado}
-          icon={Gauge}
-          tone="text-red-400"
-        />
+        <StatCard label="SLA em dia" value={slaOk} icon={ShieldCheck} tone="text-emerald-400" />
+        <StatCard label="SLA violado" value={slaViolado} icon={Gauge} tone="text-red-400" />
         <StatCard label="Rating médio" value={ratingValue.toFixed(1)} icon={Star} tone="text-amber-400" />
-        <StatCard
-          label="Tempo médio"
-          value={avgHours != null ? `${avgHours}h` : "—"}
-          icon={Clock}
-          tone="text-violet-400"
-        />
+        <StatCard label="Tempo médio" value={avgHours != null ? `${avgHours}h` : "—"} icon={Clock} tone="text-violet-400" />
       </section>
 
-      {/* Secondary KPIs */}
-      <section className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <div className="rounded-2xl border border-border/60 bg-card p-4 space-y-1">
-          <div className="flex items-center gap-1.5 text-muted-foreground text-[10px] font-bold uppercase tracking-[0.14em]">
-            <AlertTriangle className="h-3 w-3" />
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="rounded-[24px] border border-border/60 bg-card/80 p-4 shadow-[0_10px_30px_rgba(15,23,42,0.03)]">
+          <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+            <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
             Em aberto
           </div>
-          <p className="text-2xl font-black text-amber-500">{openCount}</p>
-          <p className="text-[10px] text-muted-foreground">aguardando atendimento</p>
+          <p className="mt-3 text-2xl font-black tracking-[-0.06em] text-amber-500">{openCount}</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">Aguardando atendimento</p>
         </div>
 
-        <div className="rounded-2xl border border-border/60 bg-card p-4 space-y-1">
-          <div className="flex items-center gap-1.5 text-muted-foreground text-[10px] font-bold uppercase tracking-[0.14em]">
-            <CheckCircle2 className="h-3 w-3" />
+        <div className="rounded-[24px] border border-border/60 bg-card/80 p-4 shadow-[0_10px_30px_rgba(15,23,42,0.03)]">
+          <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
             Resolvidos
           </div>
-          <p className="text-2xl font-black text-emerald-500">{resolvedCount}</p>
-          <p className="text-[10px] text-muted-foreground">total resolvidos</p>
+          <p className="mt-3 text-2xl font-black tracking-[-0.06em] text-emerald-500">{resolvedCount}</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">Total resolvidos</p>
         </div>
 
-        <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 col-span-1 space-y-1">
-          <div className="flex items-center gap-1.5 text-emerald-600 text-[10px] font-bold uppercase tracking-[0.14em]">
-            <ShieldCheck className="h-3 w-3" />
+        <div className="rounded-[24px] border border-emerald-500/20 bg-emerald-500/5 p-4 shadow-[0_10px_30px_rgba(16,185,129,0.04)]">
+          <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-600">
+            <ShieldCheck className="h-3.5 w-3.5" />
             Conformidade SLA
           </div>
-          <p className="text-2xl font-black text-emerald-600">{slaCompliancePct}%</p>
-          <p className="text-[10px] text-muted-foreground">dos chamados em aberto</p>
+          <p className="mt-3 text-2xl font-black tracking-[-0.06em] text-emerald-600">{slaCompliancePct}%</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">dos chamados em aberto</p>
         </div>
 
-        <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 col-span-1 space-y-2">
-          <p className="text-[10px] font-bold text-primary uppercase tracking-[0.14em]">Acesso rápido</p>
-          <div className="space-y-1.5">
-            <Link href="/admin/relatorios" className="block text-xs font-semibold text-foreground hover:text-primary transition-colors">
-              → Ver relatórios detalhados
+        <div className="rounded-[24px] border border-primary/15 bg-primary/5 p-4 shadow-[0_10px_30px_rgba(59,130,246,0.04)]">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">Acesso rápido</p>
+          <div className="mt-3 space-y-2">
+            <Link href="/admin/relatorios" className="block text-sm font-medium text-foreground/80 transition-colors hover:text-primary">
+              → Relatórios detalhados
             </Link>
-            <Link href="/admin/backup" className="block text-xs font-semibold text-foreground hover:text-primary transition-colors">
+            <Link href="/admin/backup" className="block text-sm font-medium text-foreground/80 transition-colors hover:text-primary">
               → Gerenciar backups
             </Link>
-            <Link href="/admin/conhecimento" className="block text-xs font-semibold text-foreground hover:text-primary transition-colors">
+            <Link href="/admin/conhecimento" className="block text-sm font-medium text-foreground/80 transition-colors hover:text-primary">
               → Base de conhecimento
             </Link>
           </div>
         </div>
       </section>
 
-      <section className="rounded-3xl border border-border/60 bg-card p-6">
-        <h3 className="mb-4 text-sm font-black uppercase tracking-[0.16em] text-muted-foreground">Chamados por prioridade</h3>
-        <div className="grid gap-3 sm:grid-cols-4">
+      <section className="rounded-[28px] border border-border/60 bg-card/80 p-5 shadow-[0_10px_30px_rgba(15,23,42,0.03)]">
+        <h3 className="mb-4 text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
+          Chamados por prioridade
+        </h3>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {priorityCounts.map((item) => (
-            <div key={item.priority} className="space-y-2 rounded-2xl border border-border/50 bg-muted/20 p-4">
-              <div className="flex items-center justify-between">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{priorityLabels[item.priority]}</p>
-                <p className="text-xl font-black">{item.count}</p>
+            <div key={item.priority} className="rounded-[20px] border border-border/60 bg-muted/20 p-3.5">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+                  {priorityLabels[item.priority]}
+                </p>
+                <p className="text-xl font-black tracking-[-0.05em] text-foreground">{item.count}</p>
               </div>
-              <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+              <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
                 <div
                   className={`h-1.5 rounded-full ${priorityColors[item.priority]}`}
                   style={{ width: `${Math.round((item.count / maxPriorityCount) * 100)}%` }}
@@ -252,37 +238,42 @@ export async function AdminStatsContainer() {
         </div>
       </section>
 
-      {/* Tables */}
-      <div className="grid gap-8 lg:grid-cols-2">
-        <Card className="glass-card border-none shadow-2xl">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-xl font-bold">
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card className="rounded-[28px] border border-border/60 bg-card/80 shadow-[0_12px_30px_rgba(15,23,42,0.03)]">
+          <CardHeader className="px-5 pb-3 pt-5">
+            <CardTitle className="flex items-center gap-2 text-lg font-black tracking-[-0.04em]">
               <BarChart3 className="h-5 w-5 text-primary" />
-              Performance por Categoria
+              Performance por categoria
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-5 pb-5">
             <Table>
               <THead>
-                <TR className="border-white/5">
-                  <TH className="text-[10px] font-black uppercase tracking-widest">Categoria</TH>
-                  <TH className="text-right text-[10px] font-black uppercase tracking-widest">Volume</TH>
-                  <TH className="text-right text-[10px] font-black uppercase tracking-widest pr-2">Bar</TH>
+                <TR className="border-border/60">
+                  <TH className="py-2 text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+                    Categoria
+                  </TH>
+                  <TH className="py-2 text-right text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+                    Volume
+                  </TH>
+                  <TH className="py-2 text-right text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+                    Bar
+                  </TH>
                 </TR>
               </THead>
               <TBody>
                 {categoriesWithCount.map((item) => (
-                  <TR key={item.id} className="group border-white/5 hover:bg-white/5">
-                    <TD className="text-sm font-bold">{item.name}</TD>
-                    <TD className="text-right">
-                      <span className="inline-flex h-8 w-12 items-center justify-center rounded-lg bg-muted/50 font-bold transition-colors group-hover:bg-primary/20 group-hover:text-primary">
+                  <TR key={item.id} className="border-border/60 hover:bg-muted/20">
+                    <TD className="py-3 text-sm font-semibold text-foreground">{item.name}</TD>
+                    <TD className="py-3 text-right">
+                      <span className="inline-flex h-8 min-w-11 items-center justify-center rounded-xl bg-muted/70 px-2 text-sm font-bold text-foreground">
                         {item.ticketCount}
                       </span>
                     </TD>
-                    <TD className="text-right pr-2 w-24">
-                      <div className="h-1.5 w-full rounded-full bg-muted/50 overflow-hidden">
+                    <TD className="w-24 py-3 pr-0 text-right">
+                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
                         <div
-                          className="h-1.5 rounded-full bg-primary/60 transition-all"
+                          className="h-1.5 rounded-full bg-primary/70"
                           style={{ width: `${Math.round((item.ticketCount / maxCatCount) * 100)}%` }}
                         />
                       </div>
@@ -294,42 +285,54 @@ export async function AdminStatsContainer() {
           </CardContent>
         </Card>
 
-        <Card className="glass-card border-none shadow-2xl">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-xl font-bold">
+        <Card className="rounded-[28px] border border-border/60 bg-card/80 shadow-[0_12px_30px_rgba(15,23,42,0.03)]">
+          <CardHeader className="px-5 pb-3 pt-5">
+            <CardTitle className="flex items-center gap-2 text-lg font-black tracking-[-0.04em]">
               <Users className="h-5 w-5 text-sky-400" />
-              Fila por Técnico (ativos)
+              Fila por técnico
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-5 pb-5">
             <Table>
               <THead>
-                <TR className="border-white/5">
-                  <TH className="text-[10px] font-black uppercase tracking-widest">Técnico</TH>
-                  <TH className="text-right text-[10px] font-black uppercase tracking-widest">Fila</TH>
-                  <TH className="text-right text-[10px] font-black uppercase tracking-widest pr-2">Carga</TH>
+                <TR className="border-border/60">
+                  <TH className="py-2 text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+                    Técnico
+                  </TH>
+                  <TH className="py-2 text-right text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+                    Fila
+                  </TH>
+                  <TH className="py-2 text-right text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+                    Carga
+                  </TH>
                 </TR>
               </THead>
               <TBody>
                 {techniciansWithCount.map((item) => (
-                  <TR key={item.id} className="group border-white/5 hover:bg-white/5">
-                    <TD className="text-sm font-bold">
+                  <TR key={item.id} className="border-border/60 hover:bg-muted/20">
+                    <TD className="py-3 text-sm font-semibold text-foreground">
                       <div className="flex items-center gap-2">
-                        <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-sky-500/10 text-[10px] font-black text-sky-400">
+                        <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-sky-500/10 text-[10px] font-black text-sky-500">
                           {item.name.charAt(0)}
                         </div>
                         {item.name}
                       </div>
                     </TD>
-                    <TD className="text-right">
-                      <span className={`inline-flex h-8 w-12 items-center justify-center rounded-lg font-bold transition-colors ${item.assignedTickets > 5 ? "bg-red-500/10 text-red-500" : "bg-muted/50 group-hover:bg-sky-500/20 group-hover:text-sky-400"}`}>
+                    <TD className="py-3 text-right">
+                      <span
+                        className={`inline-flex h-8 min-w-11 items-center justify-center rounded-xl px-2 text-sm font-bold ${
+                          item.assignedTickets > 5 ? "bg-red-500/10 text-red-500" : "bg-muted/70 text-foreground"
+                        }`}
+                      >
                         {item.assignedTickets}
                       </span>
                     </TD>
-                    <TD className="text-right pr-2 w-24">
-                      <div className="h-1.5 w-full rounded-full bg-muted/50 overflow-hidden">
+                    <TD className="w-24 py-3 pr-0 text-right">
+                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
                         <div
-                          className={`h-1.5 rounded-full transition-all ${item.assignedTickets > 5 ? "bg-red-500" : "bg-sky-500/60"}`}
+                          className={`h-1.5 rounded-full ${
+                            item.assignedTickets > 5 ? "bg-red-500" : "bg-sky-500/70"
+                          }`}
                           style={{ width: `${Math.round((item.assignedTickets / maxTechCount) * 100)}%` }}
                         />
                       </div>

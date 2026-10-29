@@ -61,11 +61,13 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
   );
 
   const [techList, relatedArticles] = await Promise.all([
-    getRepository(UserEntity).find({
-      where: { role: In([Role.TECNICO, Role.ADMIN]) },
-      select: ["id", "name"],
-      order: { name: "ASC" },
-    }) as Promise<Array<{ id: string; name: string }>>,
+    getRepository(UserEntity)
+      .find({
+        where: { role: In([Role.TECNICO, Role.ADMIN]) },
+        select: ["id", "name"],
+        order: { name: "ASC" },
+      })
+      .then((users) => users.map(({ id, name }) => ({ id, name }))) as Promise<Array<{ id: string; name: string }>>,
     findRelatedKnowledgeArticles({
       title: ticket.titulo,
       description: ticket.descricao,

@@ -363,7 +363,7 @@ export async function assignTicketAction(ticketId: string, assigneeId: string) {
   await initializeDatabase();
   
   const session = await getSession();
-  if (!session || (session.role !== Role.ADMIN && session.role !== Role.TECNICO)) {
+  if (!session || session.role !== Role.ADMIN) {
     throw new Error("Sem permissao");
   }
 
@@ -386,6 +386,7 @@ export async function assignTicketAction(ticketId: string, assigneeId: string) {
   await ticketHistoryRepository.save(history);
 
   revalidatePath("/suporte");
+  revalidatePath("/tickets");
   revalidatePath(`/tickets/${ticketId}`);
 }
 
@@ -524,6 +525,42 @@ export async function transferTicketAction(ticketId: string, transferToUserId: s
     fromValue: ticket.transferredFromUserId,
     toValue: parsed.data.transferToUserId,
     metadata: parsed.data.transferReason.trim(),
+  }));
+
+  revalidatePath("/suporte");
+  revalidatePath("/tickets");
+  revalidatePath(`/tickets/${ticketId}`);
+}
+
+export async function acceptTicketAction(ticketId: string) {
+  await initializeDatabase();
+
+  const session = await getSession();
+  if (!session || (session.role !== Role.TECNICO && session.role !== Role.ADMIN)) {
+    throw new Error("Sem permissao");
+  }
+
+  const ticketRepository = getRepository(Ticket);
+  const ticketHistoryRepository = getRepository(TicketHistory);
+
+  const ticket = await ticketRepository.findOne({ where: { id: ticketId } });
+  if (!ticket) throw new Error("Chamado não encontrado");
+
+  if (ticket.responsavelId && ticket.responsavelId !== session.id) {
+    throw new Error("Este chamado já está atribuído a outro técnico.");
+  }
+
+  const previousAssignee = ticket.responsavelId ?? null;
+  ticket.responsavelId = session.id;
+  ticket.status = TicketStatus.EM_ATENDIMENTO;
+  await ticketRepository.save(ticket);
+
+  await ticketHistoryRepository.save(ticketHistoryRepository.create({
+    ticketId: ticket.id,
+    actorId: session.id,
+    action: HistoryAction.TROCA_RESPONSAVEL,
+    fromValue: previousAssignee ?? "Nenhum",
+    toValue: session.id,
   }));
 
   revalidatePath("/suporte");

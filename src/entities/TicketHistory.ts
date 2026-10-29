@@ -8,7 +8,6 @@ import {
 } from "typeorm";
 import { Ticket } from "./Ticket";
 import { User } from "./User";
-import { HistoryAction } from "../types";
 
 @Entity("ticket_histories")
 export class TicketHistory {
@@ -28,10 +27,10 @@ export class TicketHistory {
   actor?: Relation<User>;
 
   @Column({
-    type: "enum",
-    enum: HistoryAction,
+    type: "varchar",
+    length: 255,
   })
-  action!: HistoryAction;
+  action!: string;
 
   @Column({ type: "text", nullable: true })
   fromValue?: string;
