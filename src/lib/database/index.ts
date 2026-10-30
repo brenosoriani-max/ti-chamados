@@ -14,6 +14,7 @@ import { TicketAttachment } from "@/entities/TicketAttachment";
 import { TicketHistory } from "@/entities/TicketHistory";
 import { TicketMessage } from "@/entities/TicketMessage";
 import { User } from "@/entities/User";
+import { PasswordResetToken } from "@/entities/PasswordResetToken";
 
 const ENTITIES = [
   BackupLog,
@@ -30,6 +31,7 @@ const ENTITIES = [
   TicketHistory,
   TicketMessage,
   User,
+  PasswordResetToken
 ] as const;
 
 type DbGlobal = {
@@ -53,7 +55,7 @@ function createDataSource() {
     port: parseInt(process.env.DB_PORT || "3306", 10),
     username: process.env.DB_USER || "root",
     password: process.env.DB_PASSWORD || "",
-    database: process.env.DB_NAME || "ti_chamados",
+    database: process.env.DB_NAME || "helpdesk_contec",
     synchronize: false,
     logging: process.env.NODE_ENV === "development" ? ["error"] : ["error"],
     extra: {

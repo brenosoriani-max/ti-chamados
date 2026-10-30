@@ -129,16 +129,23 @@ export function TicketTable({ tickets, userRole, userId }: { tickets: any[], use
                       {isOverdue ? `ATRASADO ${Math.abs(hours)}h` : `${hours}h restantes`}
                     </span>
                   </TD>
-                  <TD className="py-4 text-center">
-                    <div className="flex flex-col items-center gap-1">
-                      <span className="text-[10px] font-bold text-muted-foreground">{ticket.assigneeName ?? "Nenhum"}</span>
-                      {ticket.assigneeId ? (
-                        <span className="text-[8px] uppercase tracking-[0.14em] text-emerald-600 font-black">Em atendimento</span>
-                      ) : (
-                        <span className="text-[8px] uppercase tracking-[0.14em] text-amber-600 font-black">Pendente</span>
-                      )}
-                    </div>
-                  </TD>
+              <TD className="py-4 text-center">
+                <div className="flex flex-col items-center gap-1">
+                  <span className="text-[10px] font-bold text-muted-foreground">
+                    {ticket.assigneeName ?? "Nenhum"}
+                  </span>
+
+                  {ticket.status === "RESOLVIDO" ? null : ticket.assigneeId ? (
+                    <span className="text-[8px] uppercase tracking-[0.14em] text-emerald-600 font-black">
+                      Em atendimento
+                    </span>
+                  ) : (
+                    <span className="text-[8px] uppercase tracking-[0.14em] text-amber-600 font-black">
+                      Pendente
+                    </span>
+                  )}
+                </div>
+              </TD>
                   <TD className="py-4 text-right pr-6">
                     <div className="flex items-center justify-end gap-2">
                       {isStaff && !ticket.assigneeId && (
