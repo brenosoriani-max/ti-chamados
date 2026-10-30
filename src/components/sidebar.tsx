@@ -58,7 +58,7 @@ export function Sidebar({ user }: SidebarProps) {
         <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.7)]" />
       </div>
 
-      <div className="flex-1 overflow-y-auto py-5 px-3 space-y-7">
+      <div className="flex-1 overflow-hidden py-5 px-3 space-y-7">
         <div className="space-y-1.5">
           <p className="px-3 text-[10px] font-bold text-muted-foreground/70 uppercase tracking-[0.22em] mb-2">Principal</p>
           {primaryNav.map((item) => (

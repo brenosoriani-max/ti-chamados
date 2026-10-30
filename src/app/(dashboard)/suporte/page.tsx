@@ -15,8 +15,7 @@ export default async function SuportePage() {
 
   const isStaff = session.role === Role.TECNICO || session.role === Role.ADMIN;
 
-  // Clients can see this route only as an empty-state landing page. This keeps
-  // the internal queue, assignments, metrics, and other customers' data private.
+
   if (session.role === Role.CLIENTE) {
     await initializeDatabase();
     const hasTickets = await getRepository(Ticket).exist({

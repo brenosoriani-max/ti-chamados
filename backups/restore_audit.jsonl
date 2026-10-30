@@ -1,0 +1,1 @@
+{"operation":"RESTORE","status":"SUCESSO","userId":"f1f192ec-17f0-453a-99b6-0128f6bc6cab","backupId":"7aad1db0-530d-4eba-b18e-f01fdcae7bba","backupFile":"backup_2026-10-29T17-31-55-927Z.sql","safetyBackup":"backup_pre_restore_2026-10-30T13-09-46-624Z.sql","durationMs":1032,"timestamp":"2026-10-30T13:09:47.651Z"}
