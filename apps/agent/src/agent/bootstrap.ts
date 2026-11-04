@@ -37,6 +37,8 @@ let reconnectTimer: NodeJS.Timeout | null = null;
 let shouldReconnect = true;
 let reconnectAttempts = 0;
 
+let startInProgress = false;
+
 const RECONNECT_DELAYS = [
   3000,
   5000,
@@ -144,120 +146,136 @@ export async function stopAgent() {
 }
 
 export async function startAgent() {
+  if (startInProgress) {
+    return;
+  }
+
+  startInProgress = true;
   shouldReconnect = true;
 
-  clearReconnectTimer();
-
-  await cleanupConnection();
-
-  const serverUrl = getServerUrl();
-
-  if (!serverUrl) {
-    updateStatus("Desconfigurado");
-    return;
-  }
-
-  updateStatus("Conectando...");
-
-  const equipmentUuid = getEquipmentUuid();
-  const token = getToken();
-  const terminalNameSetting = getTerminalName();
-
   try {
-    socket = createAgentSocket(serverUrl, token);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Falha ao criar socket";
-    updateStatus("Erro de Conexão", message);
-    scheduleReconnect(message);
-    return;
-  }
+    clearReconnectTimer();
+    await cleanupConnection();
 
-  socket.on("connect", () => {
-    reconnectAttempts = 0;
+    const serverUrl = getServerUrl();
 
-    const info = collectSystemInfo();
-
-    const payload: any = {
-      equipmentUuid,
-      token,
-      ...info,
-    };
-
-    if (terminalNameSetting) {
-      payload.machineName = terminalNameSetting;
+    if (!serverUrl || !isValidServerUrl(serverUrl)) {
+      updateStatus("Desconfigurado", "URL do servidor inválida ou ausente");
+      return;
     }
 
-    socket?.emit(remoteSocketEvents.terminalRegister, payload, (response: any) => {
-      if (response?.ok) {
-        if (response.token) {
-          setToken(response.token);
-        }
+    updateStatus("Conectando...");
 
-        updateStatus("Online");
-      } else {
-        const errorMessage = response?.error ?? "Falha no registro do terminal";
-        updateStatus("Erro de Conexão", errorMessage);
-        scheduleReconnect(errorMessage);
+    const equipmentUuid = getEquipmentUuid();
+    const token = getToken();
+    const terminalNameSetting = getTerminalName();
+
+    try {
+      socket = createAgentSocket(serverUrl, token);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Falha ao criar socket";
+      updateStatus("Erro de Conexão", message);
+      scheduleReconnect(message);
+      return;
+    }
+
+    socket.on("connect", () => {
+      reconnectAttempts = 0;
+
+      const info = collectSystemInfo();
+
+      const payload: any = {
+        equipmentUuid,
+        token,
+        ...info,
+      };
+
+      if (terminalNameSetting) {
+        payload.machineName = terminalNameSetting;
+      }
+
+      socket?.emit(remoteSocketEvents.terminalRegister, payload, (response: any) => {
+        if (response?.ok) {
+          if (response.token) {
+            setToken(response.token);
+          }
+
+          updateStatus("Online");
+        } else {
+          const errorMessage = response?.error ?? "Falha no registro do terminal";
+          updateStatus("Erro de Conexão", errorMessage);
+          scheduleReconnect(errorMessage);
+        }
+      });
+    });
+
+    socket.on("connect_error", (error) => {
+      updateStatus("Erro de Conexão", error.message);
+      scheduleReconnect(error.message);
+    });
+
+    socket.on("disconnect", (reason) => {
+      const reasonText = String(reason || "desconectado");
+      updateStatus("Desconectado", reasonText);
+
+      if (shouldReconnect && reason !== "io client disconnect") {
+        scheduleReconnect(reasonText);
       }
     });
-  });
 
-  socket.on("connect_error", (error) => {
-    updateStatus("Erro de Conexão", error.message);
-    scheduleReconnect(error.message);
-  });
+    socket.on(remoteSocketEvents.terminalRegistered, (payload: { token: string }) => {
+      setToken(payload.token);
 
-  socket.on("disconnect", (reason) => {
-    const reasonText = String(reason || "desconectado");
-    updateStatus("Desconectado", reasonText);
-
-    if (shouldReconnect && reason !== "io client disconnect") {
-      scheduleReconnect(reasonText);
-    }
-  });
-
-  socket.on(remoteSocketEvents.terminalRegistered, (payload: { token: string }) => {
-    setToken(payload.token);
-
-    reconnectAttempts = 0;
-
-    updateStatus("Online");
-  });
-
-  socket.on(remoteSocketEvents.sessionCreate, async (payload: { sessaoId: string; monitorIndex?: number }) => {
-    if (!socket) {
-      return;
-    }
-
-    socket.emit(remoteSocketEvents.sessionAccept, {
-      sessaoId: payload.sessaoId,
+      reconnectAttempts = 0;
+      updateStatus("Online");
     });
 
-    await startScreenShare(socket, payload);
-  });
+    socket.on(remoteSocketEvents.sessionCreate, async (payload: { sessaoId: string; monitorIndex?: number }) => {
+      if (!socket) {
+        return;
+      }
 
-  socket.on(remoteSocketEvents.sessionEnd, () => {
-    stopScreenShare();
-  });
+      socket.emit(remoteSocketEvents.sessionAccept, {
+        sessaoId: payload.sessaoId,
+      });
 
-  socket.on(remoteSocketEvents.mouseMove, handleMouseMove);
-  socket.on(remoteSocketEvents.mouseClick, handleMouseClick);
-  socket.on(remoteSocketEvents.mouseScroll, handleMouseScroll);
-  socket.on(remoteSocketEvents.keyboardKeyDown, (payload) => handleKeyboardKey(payload, "down"));
-  socket.on(remoteSocketEvents.keyboardKeyUp, (payload) => handleKeyboardKey(payload, "up"));
-  socket.on(remoteSocketEvents.keyboardType, handleTypeText);
-
-  heartbeatInterval = setInterval(() => {
-    if (!socket || !socket.connected) {
-      return;
-    }
-
-    const info = collectSystemInfo();
-
-    socket.emit(remoteSocketEvents.terminalHeartbeat, {
-      token: getToken(),
-      ip: info.ip,
-      usuarioLogado: info.usuarioLogado,
+      await startScreenShare(socket, payload);
     });
-  }, HEARTBEAT_INTERVAL_MS);
+
+    socket.on(remoteSocketEvents.sessionEnd, () => {
+      stopScreenShare();
+    });
+
+    socket.on(remoteSocketEvents.mouseMove, handleMouseMove);
+    socket.on(remoteSocketEvents.mouseClick, handleMouseClick);
+    socket.on(remoteSocketEvents.mouseScroll, handleMouseScroll);
+    socket.on(remoteSocketEvents.keyboardKeyDown, (payload) => handleKeyboardKey(payload, "down"));
+    socket.on(remoteSocketEvents.keyboardKeyUp, (payload) => handleKeyboardKey(payload, "up"));
+    socket.on(remoteSocketEvents.keyboardType, handleTypeText);
+
+    heartbeatInterval = setInterval(() => {
+      if (!socket || !socket.connected) {
+        return;
+      }
+
+      const info = collectSystemInfo();
+
+      socket.emit(remoteSocketEvents.terminalHeartbeat, {
+        token: getToken(),
+        ip: info.ip,
+        usuarioLogado: info.usuarioLogado,
+      });
+    }, HEARTBEAT_INTERVAL_MS);
+  } finally {
+    startInProgress = false;
+  }
+}
+
+function isValidServerUrl(url: string) {
+  try {
+    const parsed = new URL(url);
+    return ["http:", "https:"].includes(parsed.protocol);
+  } catch {
+    return false;
+  }
 }

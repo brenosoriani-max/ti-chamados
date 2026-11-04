@@ -8,6 +8,13 @@ type AgentStore = {
   terminalName?: string;
 };
 
+export function normalizeServerUrl(serverUrl: string) {
+  const trimmed = (serverUrl ?? "").trim();
+  if (!trimmed) return "";
+  const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `http://${trimmed}`;
+  return withProtocol.replace(/\/+$/, "");
+}
+
 const store = new Store<AgentStore>({
   name: "ti-chamados-agent",
   defaults: { equipmentUuid: uuidv4() },
@@ -31,11 +38,11 @@ export function setToken(token: string) {
 }
 
 export function getServerUrl() {
-  return store.get("serverUrl");
+  return normalizeServerUrl(store.get("serverUrl") ?? "");
 }
 
 export function setServerUrl(url: string) {
-  store.set("serverUrl", url);
+  store.set("serverUrl", normalizeServerUrl(url));
 }
 
 export function getTerminalName() {

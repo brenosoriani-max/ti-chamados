@@ -11,18 +11,24 @@ import bcrypt from "bcryptjs";
 import { getSession, clearRefreshCookie, setAuthCookie, createSessionToken } from "@/lib/auth";
 import { getRepository, initializeDatabase } from "@/lib/database";
 import { User } from "@/entities/User";
+import { Notification } from "@/entities/Notification";
 import { Equipment } from "@/entities/Equipment";
 import { Ticket } from "@/entities/Ticket";
 import { TicketHistory } from "@/entities/TicketHistory";
 import { TicketAttachment } from "@/entities/TicketAttachment";
 import { KnowledgeArticle } from "@/entities/KnowledgeArticle";
 import { Category } from "@/entities/Category";
-import { Role, TicketStatus, HistoryAction } from "@/types";
+import { Role, TicketStatus, HistoryAction, NotificationType } from "@/types";
 import { ticketCreateSchema, ticketFinishSchema, ticketTransferSchema, registerSchema } from "@/lib/validators";
 import { getDueDates, nextTicketNumber } from "@/lib/tickets";
 import { ensureUserTerminal } from "@/lib/remote/services/terminal-service";
 import { emitTerminalUpdated } from "@/lib/remote/socket-bridge";
 import { messages } from "@/lib/messages";
+import {
+  sendPasswordResetEmail,
+  sendTicketAssignmentEmail,
+  sendTicketResolutionEmail,
+} from "@/lib/email";
 
 type RegisterState = { error?: string };
 
@@ -466,8 +472,9 @@ export async function finishTicketAction(ticketId: string, conclusion: string) {
 
   const ticketRepository = getRepository(Ticket);
   const ticketHistoryRepository = getRepository(TicketHistory);
+  const userRepository = getRepository(User);
 
-  const ticket = await ticketRepository.findOne({ where: { id: ticketId } });
+  const ticket = await ticketRepository.findOne({ where: { id: ticketId }, relations: ["cliente", "responsavel"] });
   if (!ticket) throw new Error("Chamado não encontrado");
 
   const oldStatus = ticket.status;
@@ -487,6 +494,19 @@ export async function finishTicketAction(ticketId: string, conclusion: string) {
     metadata: parsed.data.conclusion.trim(),
   }));
 
+  if (ticket.cliente?.email) {
+    const ticketUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/tickets/${ticket.id}`;
+    await sendTicketResolutionEmail({
+      to: ticket.cliente.email,
+      customerName: ticket.cliente.name,
+      ticketNumber: ticket.protocolo,
+      ticketTitle: ticket.titulo,
+      technicianName: ticket.responsavel?.name || session.name || "Suporte",
+      resolution: parsed.data.conclusion.trim(),
+      ticketUrl,
+    });
+  }
+
   revalidatePath("/suporte");
   revalidatePath("/tickets");
   revalidatePath("/cliente");
@@ -503,8 +523,9 @@ export async function transferTicketAction(ticketId: string, transferToUserId: s
 
   const ticketRepository = getRepository(Ticket);
   const ticketHistoryRepository = getRepository(TicketHistory);
+  const notificationRepository = getRepository(Notification);
 
-  const ticket = await ticketRepository.findOne({ where: { id: ticketId } });
+  const ticket = await ticketRepository.findOne({ where: { id: ticketId }, relations: ["cliente", "responsavel"] });
   if (!ticket) throw new Error("Chamado não encontrado");
 
   const parsed = ticketTransferSchema.safeParse({ transferToUserId, transferReason });
@@ -512,9 +533,12 @@ export async function transferTicketAction(ticketId: string, transferToUserId: s
     throw new Error("É obrigatório informar o técnico e o motivo da transferência.");
   }
 
-  ticket.transferredFromUserId = ticket.responsavelId ?? session.id;
+  const previousAssigneeId = ticket.responsavelId ?? null;
+  const transferReasonText = parsed.data.transferReason.trim();
+
+  ticket.transferredFromUserId = previousAssigneeId ?? session.id;
   ticket.transferredToUserId = parsed.data.transferToUserId;
-  ticket.transferReason = parsed.data.transferReason.trim();
+  ticket.transferReason = transferReasonText;
   ticket.responsavelId = parsed.data.transferToUserId;
   ticket.status = TicketStatus.EM_ATENDIMENTO;
   await ticketRepository.save(ticket);
@@ -525,8 +549,32 @@ export async function transferTicketAction(ticketId: string, transferToUserId: s
     action: HistoryAction.TROCA_RESPONSAVEL,
     fromValue: ticket.transferredFromUserId,
     toValue: parsed.data.transferToUserId,
-    metadata: parsed.data.transferReason.trim(),
+    metadata: transferReasonText,
   }));
+
+  const targetUser = await getRepository(User).findOne({ where: { id: parsed.data.transferToUserId } });
+  if (targetUser) {
+    await notificationRepository.save(notificationRepository.create({
+      userId: targetUser.id,
+      type: NotificationType.INTERNA,
+      title: "Chamado transferido para você",
+      body: `O chamado ${ticket.protocolo} foi transferido para você por ${session.name || "o suporte"}. Motivo: ${transferReasonText}`,
+      ticketId: ticket.id,
+    }));
+  }
+
+  if (previousAssigneeId && previousAssigneeId !== parsed.data.transferToUserId) {
+    const oldAssignee = await getRepository(User).findOne({ where: { id: previousAssigneeId } });
+    if (oldAssignee) {
+      await notificationRepository.save(notificationRepository.create({
+        userId: oldAssignee.id,
+        type: NotificationType.INTERNA,
+        title: "Transferência de chamado",
+        body: `Você transferiu o chamado ${ticket.protocolo} para ${targetUser?.name || "outro técnico"}. Motivo: ${transferReasonText}`,
+        ticketId: ticket.id,
+      }));
+    }
+  }
 
   revalidatePath("/suporte");
   revalidatePath("/tickets");
@@ -544,7 +592,7 @@ export async function acceptTicketAction(ticketId: string) {
   const ticketRepository = getRepository(Ticket);
   const ticketHistoryRepository = getRepository(TicketHistory);
 
-  const ticket = await ticketRepository.findOne({ where: { id: ticketId } });
+  const ticket = await ticketRepository.findOne({ where: { id: ticketId }, relations: ["cliente", "responsavel"] });
   if (!ticket) throw new Error("Chamado não encontrado");
 
   if (ticket.responsavelId && ticket.responsavelId !== session.id) {
@@ -563,6 +611,18 @@ export async function acceptTicketAction(ticketId: string) {
     fromValue: previousAssignee ?? "Nenhum",
     toValue: session.id,
   }));
+
+  if (ticket.cliente?.email) {
+    const ticketUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/tickets/${ticket.id}`;
+    await sendTicketAssignmentEmail({
+      to: ticket.cliente.email,
+      customerName: ticket.cliente.name,
+      ticketNumber: ticket.protocolo,
+      ticketTitle: ticket.titulo,
+      technicianName: session.name || "Suporte",
+      ticketUrl,
+    });
+  }
 
   revalidatePath("/suporte");
   revalidatePath("/tickets");

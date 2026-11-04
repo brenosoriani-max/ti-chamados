@@ -25,12 +25,23 @@ function jwtSecret() {
 async function verifyUserToken(token?: string) {
   if (!token) return null;
   try {
-    const { payload } = await jwtVerify(token, jwtSecret());
+    const sanitized = token.trim();
+    if (!sanitized) return null;
+
+    const { payload } = await jwtVerify(sanitized, jwtSecret());
+
+    const role = payload.role ?? payload.rol ?? "CLIENTE";
+    const id = payload.id ?? payload.sub;
+    const name = payload.name ?? "Usuário";
+    const email = payload.email ?? "";
+
+    if (!id || !role) return null;
+
     return {
-      id: String(payload.id),
-      name: String(payload.name),
-      role: String(payload.role),
-      email: String(payload.email ?? ""),
+      id: String(id),
+      name: String(name),
+      role: String(role),
+      email: String(email),
     };
   } catch {
     return null;
@@ -39,12 +50,25 @@ async function verifyUserToken(token?: string) {
 
 function parseCookieHeader(cookieHeader?: string) {
   if (!cookieHeader) return {};
-  return Object.fromEntries(
-    cookieHeader.split(";").map((cookie) => {
-      const [key, ...v] = cookie.trim().split("=");
-      return [key, decodeURIComponent(v.join("="))];
-    })
-  );
+
+  const cookieMap: Record<string, string> = {};
+
+  for (const part of cookieHeader.split(";")) {
+    const [rawKey, ...rawValue] = part.trim().split("=");
+    const key = rawKey.trim();
+    if (!key) continue;
+    const value = rawValue.join("=");
+    cookieMap[key] = decodeURIComponent(value ?? "");
+  }
+
+  return cookieMap;
+}
+
+function isAgentAuthRequest(auth: { token?: string; sessionToken?: string; role?: string }, cookies: Record<string, string>) {
+  const hasAgentRole = auth.role === "agent";
+  const hasAgentToken = Boolean(auth.token);
+  const hasSessionToken = Boolean(auth.sessionToken || cookies.ti_chamados_token);
+  return hasAgentRole || (hasAgentToken && !hasSessionToken);
 }
 
 function broadcastTerminal(terminal: {
@@ -244,16 +268,21 @@ export function setupRemoteSocket(io: Server) {
     const sessionToken = auth.sessionToken || cookies["ti_chamados_token"];
 
     try {
-      if (auth.role === "agent" || (auth.token && !sessionToken)) {
-        if (!auth.token && process.env.ALLOW_AGENT_AUTO_REGISTER !== "1") {
+      if (isAgentAuthRequest(auth, cookies)) {
+        const agentToken = (auth.token ?? "").trim();
+
+        if (!agentToken && process.env.ALLOW_AGENT_AUTO_REGISTER !== "1") {
           return next(new Error("Conexão recusada: Token de agente obrigatório"));
         }
+
         (socket as AgentSocket).role = "agent";
-        (socket as AgentSocket).terminalToken = auth.token;
-        if (auth.token) {
-          const terminal = await findTerminalByToken(auth.token);
+        (socket as AgentSocket).terminalToken = agentToken || undefined;
+
+        if (agentToken) {
+          const terminal = await findTerminalByToken(agentToken);
           if (terminal) (socket as AgentSocket).terminalId = terminal.id;
         }
+
         return next();
       }
 

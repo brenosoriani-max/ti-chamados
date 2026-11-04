@@ -18,8 +18,9 @@ interface TicketSocket extends Socket {
 }
 
 const dev = process.env.NODE_ENV !== "production";
-const hostname = "localhost";
-const serverHost = "0.0.0.0";
+const host = process.env.HOST || "0.0.0.0";
+const serverHost = host === "localhost" ? "0.0.0.0" : host;
+const hostname = serverHost;
 const port = Number.parseInt(process.env.PORT || "3000", 10);
 
 const app = next({ dev, hostname, port });
