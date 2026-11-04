@@ -14,18 +14,20 @@ import { getSession } from "@/lib/auth";
 export default async function TicketsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string; archived?: string; priority?: string; view?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; status?: string; archived?: string; priority?: string; view?: string; page?: string; sort?: string }>;
 }) {
   const session = await getSession();
   if (!session) redirect("/login");
 
-  const { q, status, archived, priority, view, page } = await searchParams;
+  const { q, status, archived, priority, view, page, sort } = await searchParams;
   const isArchived = archived === "true";
   const isStaff = session.role !== Role.CLIENTE;
   const currentPage = Number(page ?? "1");
+  const sortOrder: "ASC" | "DESC" = sort === "oldest" ? "ASC" : "DESC";
 
   const filter = {
     isArchived,
+    sortOrder,
     ...(session.role === Role.CLIENTE ? { clienteId: session.id } : {}),
     ...(q ? { q } : {}),
     ...(status ? { status } : {}),
@@ -123,6 +125,14 @@ export default async function TicketsPage({
               <option value="ALTA">Alta</option>
               <option value="MEDIA">Média</option>
               <option value="BAIXA">Baixa</option>
+            </Select>
+            <Select
+              name="sort"
+              defaultValue={sort === "oldest" ? "oldest" : "newest"}
+              className="h-11 w-full md:w-40 rounded-xl bg-background/50 border-border/40 text-[10px] font-bold uppercase tracking-widest"
+            >
+              <option value="newest">Mais recentes</option>
+              <option value="oldest">Mais antigas</option>
             </Select>
             <Button type="submit" variant="secondary" className="h-11 rounded-xl px-6 text-[10px] font-black uppercase tracking-widest bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all">
               Filtrar

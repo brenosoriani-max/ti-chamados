@@ -10,6 +10,7 @@ export type TicketFilter = {
   status?: string;
   priority?: string;
   q?: string;
+  sortOrder?: "ASC" | "DESC";
 };
 
 export function mapTicketListItem(ticket: Ticket) {
@@ -96,9 +97,10 @@ export function buildTicketQuery(filter: TicketFilter) {
 export async function findTicketsWithRelations(filter: TicketFilter, page?: number, pageSize?: number) {
   const currentPage = Number.isFinite(page) && page && page > 0 ? page : 1;
   const currentPageSize = Number.isFinite(pageSize) && pageSize && pageSize > 0 ? pageSize : 5;
+  const orderDirection = filter.sortOrder === "ASC" ? "ASC" : "DESC";
 
   const [tickets, total] = await buildTicketQuery(filter)
-    .orderBy("ticket.updatedAt", "DESC")
+    .orderBy("ticket.updatedAt", orderDirection)
     .skip((currentPage - 1) * currentPageSize)
     .take(currentPageSize)
     .getManyAndCount();
@@ -113,7 +115,7 @@ export async function findTicketsWithRelations(filter: TicketFilter, page?: numb
 
 export async function findTicketsWithRelationsLegacy(filter: TicketFilter) {
   const tickets = await buildTicketQuery(filter)
-    .orderBy("ticket.updatedAt", "DESC")
+    .orderBy("ticket.updatedAt", filter.sortOrder === "ASC" ? "ASC" : "DESC")
     .getMany();
 
   return tickets.map(mapTicketListItem);

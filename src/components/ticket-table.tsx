@@ -35,6 +35,16 @@ export function TicketTable({
   const currentPageSize = Math.max(pageSize ?? 20, 1);
   const totalPages = total ? Math.max(Math.ceil(total / currentPageSize), 1) : 1;
 
+  const visiblePages = (() => {
+    if (totalPages <= 5) {
+      return Array.from({ length: totalPages }, (_, index) => index + 1);
+    }
+
+    const start = Math.max(1, currentPage - 2);
+    const end = Math.min(totalPages, start + 4);
+    return Array.from({ length: end - start + 1 }, (_, index) => start + index);
+  })();
+
   useEffect(() => {
     if (!userId) {
       setUnreadTicketIds({});
@@ -224,8 +234,26 @@ export function TicketTable({
                 currentPage === 1 ? "pointer-events-none opacity-40" : "border-border/60 hover:bg-muted"
               )}
             >
-              Anterior
+              <span aria-hidden="true">&lt;</span>
             </Link>
+
+            <div className="flex items-center gap-1">
+              {visiblePages.map((pageNumber) => (
+                <Link
+                  key={pageNumber}
+                  href={buildPageHref(pageNumber)}
+                  className={cn(
+                    "inline-flex h-8 min-w-8 items-center justify-center rounded-md border px-2 text-xs font-medium transition-colors",
+                    pageNumber === currentPage
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border/60 hover:bg-muted"
+                  )}
+                >
+                  {pageNumber}
+                </Link>
+              ))}
+            </div>
+
             <Link
               href={buildPageHref(Math.min(totalPages, currentPage + 1))}
               className={cn(
@@ -233,7 +261,7 @@ export function TicketTable({
                 currentPage === totalPages ? "pointer-events-none opacity-40" : "border-border/60 hover:bg-muted"
               )}
             >
-              Próxima
+              <span aria-hidden="true">&gt;</span>
             </Link>
           </div>
         </div>

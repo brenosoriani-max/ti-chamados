@@ -21,6 +21,7 @@ export async function TicketListContainer({ filter, userRole, userId, page, page
     status: filter.status,
     priority: filter.priority,
     archived: filter.isArchived,
+    sort: filter.sortOrder === "ASC" ? "oldest" : "newest",
   };
 
   if (filter.clienteId) {
