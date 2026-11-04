@@ -8,12 +8,41 @@ interface TicketListContainerProps {
   filter: TicketFilter;
   userRole: Role;
   userId: string;
+  page?: number;
+  pageSize?: number;
 }
 
-export async function TicketListContainer({ filter, userRole, userId }: TicketListContainerProps) {
+export async function TicketListContainer({ filter, userRole, userId, page, pageSize }: TicketListContainerProps) {
   await initializeDatabase();
-  const tickets = await findTicketsWithRelations(filter);
-  return <TicketTable tickets={tickets} userRole={userRole} userId={userId} />;
+  const { tickets, total, page: currentPage, pageSize: currentPageSize } = await findTicketsWithRelations(filter, page, pageSize);
+
+  const pageQuery: Record<string, string | boolean | undefined> = {
+    q: filter.q,
+    status: filter.status,
+    priority: filter.priority,
+    archived: filter.isArchived,
+  };
+
+  if (filter.clienteId) {
+    pageQuery.clienteId = filter.clienteId;
+  }
+
+  if (filter.assigneeId) {
+    pageQuery.assigneeId = filter.assigneeId;
+  }
+
+  return (
+    <TicketTable
+      tickets={tickets}
+      userRole={userRole}
+      userId={userId}
+      total={total}
+      page={currentPage}
+      pageSize={currentPageSize}
+      baseHref="/tickets"
+      baseQuery={pageQuery}
+    />
+  );
 }
 
 export async function ArchivedCountContainer({

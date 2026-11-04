@@ -14,14 +14,15 @@ import { getSession } from "@/lib/auth";
 export default async function TicketsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string; archived?: string; priority?: string; view?: string }>;
+  searchParams: Promise<{ q?: string; status?: string; archived?: string; priority?: string; view?: string; page?: string }>;
 }) {
   const session = await getSession();
   if (!session) redirect("/login");
 
-  const { q, status, archived, priority, view } = await searchParams;
+  const { q, status, archived, priority, view, page } = await searchParams;
   const isArchived = archived === "true";
   const isStaff = session.role !== Role.CLIENTE;
+  const currentPage = Number(page ?? "1");
 
   const filter = {
     isArchived,
@@ -137,7 +138,7 @@ export default async function TicketsPage({
           ))}
         </div>
       }>
-        <TicketListContainer filter={filter} userRole={session.role} userId={session.id} />
+        <TicketListContainer filter={filter} userRole={session.role} userId={session.id} page={currentPage} pageSize={5} />
       </Suspense>
     </div>
   );

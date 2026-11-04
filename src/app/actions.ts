@@ -489,6 +489,7 @@ export async function finishTicketAction(ticketId: string, conclusion: string) {
 
   revalidatePath("/suporte");
   revalidatePath("/tickets");
+  revalidatePath("/cliente");
   revalidatePath(`/tickets/${ticketId}`);
 }
 

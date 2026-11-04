@@ -93,7 +93,25 @@ export function buildTicketQuery(filter: TicketFilter) {
   return qb;
 }
 
-export async function findTicketsWithRelations(filter: TicketFilter) {
+export async function findTicketsWithRelations(filter: TicketFilter, page?: number, pageSize?: number) {
+  const currentPage = Number.isFinite(page) && page && page > 0 ? page : 1;
+  const currentPageSize = Number.isFinite(pageSize) && pageSize && pageSize > 0 ? pageSize : 5;
+
+  const [tickets, total] = await buildTicketQuery(filter)
+    .orderBy("ticket.updatedAt", "DESC")
+    .skip((currentPage - 1) * currentPageSize)
+    .take(currentPageSize)
+    .getManyAndCount();
+
+  return {
+    tickets: tickets.map(mapTicketListItem),
+    total,
+    page: currentPage,
+    pageSize: currentPageSize,
+  };
+}
+
+export async function findTicketsWithRelationsLegacy(filter: TicketFilter) {
   const tickets = await buildTicketQuery(filter)
     .orderBy("ticket.updatedAt", "DESC")
     .getMany();

@@ -10,9 +10,30 @@ import { TicketArchiveButton } from "@/components/ticket-archive-button";
 import { acceptTicketAction } from "@/app/actions";
 import { toast } from "sonner";
 
-export function TicketTable({ tickets, userRole, userId }: { tickets: any[], userRole?: string, userId?: string }) {
+export function TicketTable({
+  tickets,
+  userRole,
+  userId,
+  total,
+  page,
+  pageSize,
+  baseHref,
+  baseQuery,
+}: {
+  tickets: any[];
+  userRole?: string;
+  userId?: string;
+  total?: number;
+  page?: number;
+  pageSize?: number;
+  baseHref?: string;
+  baseQuery?: Record<string, string | boolean | undefined>;
+}) {
   const isStaff = userRole === "TECNICO" || userRole === "ADMIN";
   const [unreadTicketIds, setUnreadTicketIds] = useState<Record<string, boolean>>({});
+  const currentPage = Math.max(page ?? 1, 1);
+  const currentPageSize = Math.max(pageSize ?? 20, 1);
+  const totalPages = total ? Math.max(Math.ceil(total / currentPageSize), 1) : 1;
 
   useEffect(() => {
     if (!userId) {
@@ -52,6 +73,19 @@ export function TicketTable({ tickets, userRole, userId }: { tickets: any[], use
       }
     })();
   }, [tickets, userId]);
+
+  const buildPageHref = (targetPage: number) => {
+    if (!baseHref) return "#";
+
+    const params = new URLSearchParams();
+    Object.entries(baseQuery ?? {}).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== "") {
+        params.set(key, String(value));
+      }
+    });
+    params.set("page", String(targetPage));
+    return `${baseHref}?${params.toString()}`;
+  };
 
   const handleAccept = async (ticketId: string) => {
     try {
@@ -168,7 +202,7 @@ export function TicketTable({ tickets, userRole, userId }: { tickets: any[], use
             })}
             {tickets.length === 0 && (
               <TR>
-                <TD colSpan={5} className="py-10 text-center text-xs font-medium text-muted-foreground italic">
+                <TD colSpan={7} className="py-10 text-center text-xs font-medium text-muted-foreground italic">
                   Nenhum chamado encontrado.
                 </TD>
               </TR>
@@ -176,6 +210,34 @@ export function TicketTable({ tickets, userRole, userId }: { tickets: any[], use
           </TBody>
         </Table>
       </div>
+
+      {total !== undefined && totalPages > 1 && (
+        <div className="flex items-center justify-between gap-3 border-t border-border/40 bg-muted/10 px-4 py-3 text-xs text-muted-foreground">
+          <span>
+            Página {currentPage} de {totalPages}
+          </span>
+          <div className="flex items-center gap-2">
+            <Link
+              href={buildPageHref(Math.max(1, currentPage - 1))}
+              className={cn(
+                "rounded-lg border px-3 py-1.5 font-medium transition-colors",
+                currentPage === 1 ? "pointer-events-none opacity-40" : "border-border/60 hover:bg-muted"
+              )}
+            >
+              Anterior
+            </Link>
+            <Link
+              href={buildPageHref(Math.min(totalPages, currentPage + 1))}
+              className={cn(
+                "rounded-lg border px-3 py-1.5 font-medium transition-colors",
+                currentPage === totalPages ? "pointer-events-none opacity-40" : "border-border/60 hover:bg-muted"
+              )}
+            >
+              Próxima
+            </Link>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

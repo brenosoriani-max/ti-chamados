@@ -8,8 +8,14 @@ import { Priority } from "@/types";
 export async function nextTicketNumber() {
   await initializeDatabase();
   const ticketRepository = getRepository(Ticket);
-  const total = await ticketRepository.count();
-  return `HD-${String(total + 1).padStart(6, "0")}`;
+
+  const result = await ticketRepository
+    .createQueryBuilder("ticket")
+    .select("MAX(CAST(REPLACE(ticket.protocolo, 'HD-', '') AS UNSIGNED))", "maxNumero")
+    .getRawOne<{ maxNumero?: number | string }>();
+
+  const currentMax = Number(result?.maxNumero ?? 0);
+  return `HD-${String(currentMax + 1).padStart(6, "0")}`;
 }
 
 export async function getDueDates(priority: Priority) {
