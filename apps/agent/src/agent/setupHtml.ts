@@ -5,19 +5,39 @@ export const SETUP_HTML = `<!DOCTYPE html>
   <title>Configurações - TI Chamados Agent</title>
   <style>
     :root {
-      --bg: #0b1020;
-      --bg-strong: #0f172a;
-      --panel: rgba(15, 23, 42, 0.88);
-      --panel-2: rgba(15, 23, 42, 0.72);
-      --border: rgba(148, 163, 184, 0.22);
-      --text: #e2e8f0;
-      --muted: #94a3b8;
-      --primary: #38bdf8;
-      --primary-strong: #0ea5e9;
-      --success: #34d399;
-      --warning: #fbbf24;
-      --error: #f87171;
-      --shadow: rgba(14, 165, 233, 0.25);
+      --bg: #f5f7fb;
+      --bg-strong: #eef4ff;
+      --panel: rgba(255, 255, 255, 0.88);
+      --panel-2: rgba(255, 255, 255, 0.76);
+      --border: rgba(148, 163, 184, 0.24);
+      --text: #0f172a;
+      --muted: #52607a;
+      --primary: #2563eb;
+      --primary-strong: #1d4ed8;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --error: #ef4444;
+      --shadow: rgba(37, 99, 235, 0.14);
+      --soft: rgba(148, 163, 184, 0.06);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0b1020;
+        --bg-strong: #0f172a;
+        --panel: rgba(15, 23, 42, 0.88);
+        --panel-2: rgba(15, 23, 42, 0.76);
+        --border: rgba(148, 163, 184, 0.22);
+        --text: #e2e8f0;
+        --muted: #94a3b8;
+        --primary: #38bdf8;
+        --primary-strong: #0ea5e9;
+        --success: #34d399;
+        --warning: #fbbf24;
+        --error: #f87171;
+        --shadow: rgba(14, 165, 233, 0.25);
+        --soft: rgba(148, 163, 184, 0.04);
+      }
     }
 
     * {
@@ -34,52 +54,62 @@ export const SETUP_HTML = `<!DOCTYPE html>
 
     body {
       background:
-        radial-gradient(circle at top, rgba(56, 189, 248, 0.20), transparent 45%),
+        radial-gradient(circle at top, rgba(37, 99, 235, 0.12), transparent 30%),
         linear-gradient(180deg, var(--bg) 0%, var(--bg-strong) 100%);
       color: var(--text);
       display: flex;
       align-items: center;
       justify-content: center;
       min-height: 100vh;
-      padding: 20px;
+      padding: 28px;
     }
 
     .container {
+      position: relative;
       width: 100%;
-      max-width: 400px;
-      background: rgba(15, 23, 42, 0.82);
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      padding: 22px 20px 18px;
-      box-shadow: 0 18px 50px rgba(15, 23, 42, 0.6), 0 0 0 1px rgba(56, 189, 248, 0.12);
-      backdrop-filter: blur(12px);
+      max-width: 840px;
+      min-height: 640px;
+      background: rgba(255, 255, 255, 0.42);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      border-radius: 24px;
+      padding: 24px 26px 20px;
+      box-shadow: 0 22px 58px rgba(15, 23, 42, 0.08), 0 0 0 1px rgba(37, 99, 235, 0.04);
+      backdrop-filter: blur(16px);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .container {
+        background: rgba(15, 23, 42, 0.82);
+        box-shadow: 0 22px 58px rgba(15, 23, 42, 0.62), 0 0 0 1px rgba(56, 189, 248, 0.12);
+      }
     }
 
     .brand {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 20px;
-      padding-bottom: 14px;
+      margin-bottom: 22px;
+      padding-bottom: 16px;
       border-bottom: 1px solid var(--border);
     }
 
     .brand-mark {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
     }
 
     .brand-badge {
-      width: 36px;
-      height: 36px;
-      border-radius: 12px;
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
       background: linear-gradient(135deg, var(--primary), var(--primary-strong));
       display: grid;
       place-items: center;
       font-weight: 800;
-      color: #082f49;
-      box-shadow: 0 10px 25px var(--shadow);
+      color: #eff6ff;
+      box-shadow: 0 12px 28px var(--shadow);
+      letter-spacing: -0.05em;
     }
 
     .brand h1 {
@@ -96,14 +126,14 @@ export const SETUP_HTML = `<!DOCTYPE html>
     }
 
     .pill {
-      background: rgba(56, 189, 248, 0.1);
-      border: 1px solid rgba(56, 189, 248, 0.25);
+      background: rgba(37, 99, 235, 0.08);
+      border: 1px solid rgba(37, 99, 235, 0.16);
       color: var(--primary);
       font-size: 10px;
       font-weight: 700;
       letter-spacing: 0.08em;
       text-transform: uppercase;
-      padding: 6px 8px;
+      padding: 6px 9px;
       border-radius: 999px;
     }
 
@@ -112,10 +142,10 @@ export const SETUP_HTML = `<!DOCTYPE html>
       grid-template-columns: 12px 1fr;
       gap: 12px;
       align-items: center;
-      background: rgba(148, 163, 184, 0.055);
+      background: var(--soft);
       border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 12px 14px;
+      border-radius: 14px;
+      padding: 13px 15px;
       margin-bottom: 18px;
     }
 
@@ -126,23 +156,24 @@ export const SETUP_HTML = `<!DOCTYPE html>
       background: var(--muted);
       box-shadow: 0 0 0 4px rgba(148, 163, 184, 0.08);
       justify-self: center;
+      transition: all 0.2s ease;
     }
 
     .status-dot.online {
       background: var(--success);
-      box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.12), 0 0 10px rgba(52, 211, 153, 0.6);
+      box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.12), 0 0 12px rgba(16, 185, 129, 0.6);
       animation: pulse 2s infinite;
     }
 
     .status-dot.connecting {
       background: var(--warning);
-      box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.12), 0 0 10px rgba(251, 191, 36, 0.6);
+      box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.12), 0 0 12px rgba(245, 158, 11, 0.6);
       animation: pulse 1.4s infinite;
     }
 
     .status-dot.error {
       background: var(--error);
-      box-shadow: 0 0 0 4px rgba(248, 113, 113, 0.12), 0 0 10px rgba(248, 113, 113, 0.5);
+      box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.12), 0 0 12px rgba(239, 68, 68, 0.5);
     }
 
     .status-label {
@@ -164,6 +195,36 @@ export const SETUP_HTML = `<!DOCTYPE html>
       text-overflow: ellipsis;
     }
 
+    .content {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 22px;
+      align-items: start;
+      height: calc(100% - 120px);
+    }
+
+    .panel {
+      background: rgba(255, 255, 255, 0.28);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 18px 18px 14px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .panel {
+        background: rgba(15, 23, 42, 0.42);
+      }
+    }
+
+    .panel-title {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+
     form {
       display: flex;
       flex-direction: column;
@@ -173,30 +234,38 @@ export const SETUP_HTML = `<!DOCTYPE html>
     .form-group {
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 7px;
     }
 
     .form-group label {
       font-size: 12px;
       font-weight: 600;
-      color: #dfeaf8;
+      color: var(--text);
+      letter-spacing: 0.01em;
     }
 
     .form-group input {
       width: 100%;
-      background: rgba(15, 23, 42, 0.8);
+      background: rgba(148, 163, 184, 0.04);
       border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 10px 12px;
+      border-radius: 12px;
+      padding: 11px 12px;
       color: var(--text);
       font-size: 13px;
       outline: none;
-      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
     }
 
     .form-group input:focus {
-      border-color: rgba(56, 189, 248, 0.8);
-      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.12);
+      border-color: rgba(37, 99, 235, 0.7);
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+      background: rgba(255, 255, 255, 0.62);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .form-group input:focus {
+        background: rgba(15, 23, 42, 0.72);
+      }
     }
 
     .hint {
@@ -208,9 +277,9 @@ export const SETUP_HTML = `<!DOCTYPE html>
     .token-box {
       display: none;
       margin-top: 4px;
-      background: rgba(15, 23, 42, 0.75);
+      background: rgba(148, 163, 184, 0.04);
       border: 1px solid var(--border);
-      border-radius: 8px;
+      border-radius: 10px;
       padding: 8px 10px;
     }
 
@@ -229,8 +298,8 @@ export const SETUP_HTML = `<!DOCTYPE html>
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      background: rgba(56, 189, 248, 0.08);
-      border: 1px solid rgba(56, 189, 248, 0.2);
+      background: rgba(37, 99, 235, 0.08);
+      border: 1px solid rgba(37, 99, 235, 0.12);
       color: var(--primary);
       border-radius: 999px;
       padding: 5px 9px;
@@ -239,10 +308,16 @@ export const SETUP_HTML = `<!DOCTYPE html>
       cursor: pointer;
     }
 
+    .actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 6px;
+    }
+
     .btn {
-      width: 100%;
+      flex: 1;
       border: none;
-      border-radius: 10px;
+      border-radius: 12px;
       padding: 12px 14px;
       font-weight: 700;
       font-size: 13px;
@@ -262,20 +337,72 @@ export const SETUP_HTML = `<!DOCTYPE html>
 
     .btn-primary {
       background: linear-gradient(135deg, var(--primary), var(--primary-strong));
-      color: #082f49;
-      box-shadow: 0 10px 20px rgba(14, 165, 233, 0.22);
+      color: #eff6ff;
+      box-shadow: 0 10px 22px rgba(37, 99, 235, 0.18);
     }
 
     .btn-secondary {
       background: transparent;
       border: 1px solid var(--border);
       color: var(--text);
+      flex: 0.72;
+    }
+
+    .side-info {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .mini-card {
+      background: rgba(148, 163, 184, 0.04);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+    }
+
+    .mini-card h3 {
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    .mini-card p {
+      font-size: 13px;
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    .mini-card ul {
+      list-style: none;
+      display: grid;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .mini-card li {
+      color: var(--muted);
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .mini-card li::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--primary);
+      box-shadow: 0 0 10px rgba(37, 99, 235, 0.4);
     }
 
     @keyframes pulse {
-      0% { opacity: 0.7; }
+      0% { opacity: 0.75; }
       50% { opacity: 1; }
-      100% { opacity: 0.7; }
+      100% { opacity: 0.75; }
     }
   </style>
 </head>
@@ -300,32 +427,55 @@ export const SETUP_HTML = `<!DOCTYPE html>
       </div>
     </div>
 
-    <form id="settingsForm">
-      <div class="form-group">
-        <label for="serverUrl">URL do servidor</label>
-        <input type="url" id="serverUrl" placeholder="Ex: http://192.168.1.10:3000" required>
-        <div class="hint">Endereço IP ou domínio do painel Next.js.</div>
+    <div class="content">
+      <div class="panel">
+        <div class="panel-title">Configuração do agente</div>
+        <form id="settingsForm">
+          <div class="form-group">
+            <label for="serverUrl">URL do servidor</label>
+            <input type="url" id="serverUrl" placeholder="Ex: http://192.168.1.10:3000" required>
+            <div class="hint">Endereço IP ou domínio do painel Next.js.</div>
+          </div>
+
+          <div class="form-group">
+            <label for="terminalName">Nome do terminal</label>
+            <input type="text" id="terminalName" placeholder="Ex: Financeiro - PC 02">
+            <div class="hint">Nome amigável para identificação no suporte.</div>
+          </div>
+
+          <div class="form-group">
+            <label for="token">Token do terminal</label>
+            <input type="text" id="token" placeholder="Deixe em branco para auto-registro">
+            <div class="hint">Token único, quando já existe no painel.</div>
+            <div id="tokenContainer" class="token-box">
+              <span>Token ativo</span>
+              <div id="activeToken" class="token-badge">Nenhum</div>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button type="submit" id="saveBtn" class="btn btn-primary">Salvar & Conectar</button>
+            <button type="button" id="hideBtn" class="btn btn-secondary" style="display: none;">Ocultar</button>
+          </div>
+        </form>
       </div>
 
-      <div class="form-group">
-        <label for="terminalName">Nome do terminal</label>
-        <input type="text" id="terminalName" placeholder="Ex: Financeiro - PC 02">
-        <div class="hint">Nome amigável para identificação no suporte.</div>
-      </div>
+      <div class="side-info">
+        <div class="mini-card">
+          <h3>Resumo</h3>
+          <p>Configure a conexão do agente com o servidor central do TI Chamados para registrar este computador e permitir suporte remoto.</p>
+        </div>
 
-      <div class="form-group">
-        <label for="token">Token do terminal</label>
-        <input type="text" id="token" placeholder="Deixe em branco para auto-registro">
-        <div class="hint">Token único, quando já existe no painel.</div>
-        <div id="tokenContainer" class="token-box">
-          <span>Token ativo</span>
-          <div id="activeToken" class="token-badge">Nenhum</div>
+        <div class="mini-card">
+          <h3>Recomendações</h3>
+          <ul>
+            <li>Use um IP local estável</li>
+            <li>Evite URLs com espaços</li>
+            <li>Mantenha o token sempre salvo</li>
+          </ul>
         </div>
       </div>
-
-      <button type="submit" id="saveBtn" class="btn btn-primary">Salvar & Conectar</button>
-      <button type="button" id="hideBtn" class="btn btn-secondary" style="display: none;">Ocultar janela</button>
-    </form>
+    </div>
   </div>
 
   <script>
@@ -395,8 +545,7 @@ export const SETUP_HTML = `<!DOCTYPE html>
     window.tiAgent.onStatusUpdated((event) => {
       updateStatusUI(event.status, event.error, event.token);
 
-      const isSettled =
-        event.status === "Online" || event.status === "Erro de Conexão";
+      const isSettled = event.status === "Online" || event.status === "Erro de Conexão";
 
       if (isSettled) {
         saveBtn.disabled = false;

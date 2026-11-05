@@ -31,15 +31,36 @@ function mapButton(button: string): Button {
   }
 }
 
-let remoteDisplayBounds = screen.getPrimaryDisplay().bounds;
+let remoteDisplayBounds: Electron.Rectangle = {
+  x: 0,
+  y: 0,
+  width: 1920,
+  height: 1080,
+};
+
+function getSafeBounds(): Electron.Rectangle {
+  try {
+    if (screen && typeof screen.getPrimaryDisplay === "function") {
+      const primary = screen.getPrimaryDisplay();
+      if (primary?.bounds) {
+        return primary.bounds;
+      }
+    }
+  } catch {
+    // screen is not ready yet or unavailable in this context.
+  }
+
+  return remoteDisplayBounds;
+}
 
 export function setRemoteDisplayBounds(bounds: Electron.Rectangle) {
   remoteDisplayBounds = bounds;
 }
 
 function toScreenPoint(xPercent: number, yPercent: number): Point {
-  const x = Math.round(remoteDisplayBounds.x + xPercent * remoteDisplayBounds.width);
-  const y = Math.round(remoteDisplayBounds.y + yPercent * remoteDisplayBounds.height);
+  const bounds = getSafeBounds();
+  const x = Math.round(bounds.x + xPercent * bounds.width);
+  const y = Math.round(bounds.y + yPercent * bounds.height);
   return new Point(x, y);
 }
 
