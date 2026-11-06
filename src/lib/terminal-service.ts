@@ -3,6 +3,16 @@ import { getRepository, initializeDatabase } from "@/lib/database";
 import { Terminal } from "@/entities/Terminal";
 import { TerminalStatus } from "@/types";
 
+export function normalizeAgentVersion(value?: string | null) {
+  if (!value) return undefined;
+
+  const cleaned = String(value).trim().replace(/\s+/g, " ");
+  if (!cleaned) return undefined;
+
+  const limited = cleaned.slice(0, 40);
+  return limited || undefined;
+}
+
 export async function ensureUserTerminal({
   userId,
   userName,
@@ -27,6 +37,8 @@ export async function ensureUserTerminal({
     where: [{ userId }, { identificador: identifier }],
   });
 
+  const safeAgentVersion = normalizeAgentVersion(userAgent);
+
   if (!terminal) {
     terminal = terminalRepository.create({
       nome: userName || email || "Terminal",
@@ -38,7 +50,7 @@ export async function ensureUserTerminal({
       ultimaConexao: online ? new Date() : undefined,
       usuarioLogado: userName || undefined,
       hostname: userName || undefined,
-      versaoAgente: userAgent || undefined,
+      versaoAgente: safeAgentVersion,
     });
   } else {
     terminal.nome = userName || terminal.nome || email || "Terminal";
@@ -47,7 +59,7 @@ export async function ensureUserTerminal({
     terminal.ip = ip || terminal.ip;
     terminal.ultimaConexao = online ? new Date() : terminal.ultimaConexao;
     terminal.usuarioLogado = userName || terminal.usuarioLogado;
-    terminal.versaoAgente = userAgent || terminal.versaoAgente;
+    terminal.versaoAgente = safeAgentVersion || terminal.versaoAgente;
     terminal.hostname = userName || terminal.hostname;
   }
 

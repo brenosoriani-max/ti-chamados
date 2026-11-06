@@ -10,6 +10,15 @@ function bearerToken(request: NextRequest) {
   return header?.startsWith("Bearer ") ? header.slice(7) : null;
 }
 
+function normalizeAgentVersion(value: unknown) {
+  if (!value) return undefined;
+
+  const cleaned = String(value).trim().replace(/\s+/g, " ");
+  if (!cleaned) return undefined;
+
+  return cleaned.slice(0, 40) || undefined;
+}
+
 export async function POST(request: NextRequest) {
   await initializeDatabase();
 
@@ -28,7 +37,7 @@ export async function POST(request: NextRequest) {
     equipmentUuid: body.equipmentUuid ?? undefined,
     sistemaOperacional: body.sistemaOperacional ?? body.platform,
     ip: body.ip,
-    versaoAgente: body.versaoAgente,
+    versaoAgente: normalizeAgentVersion(body.versaoAgente),
     status: TerminalStatus.ONLINE,
     ultimaConexao: new Date(),
   };

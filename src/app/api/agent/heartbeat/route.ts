@@ -9,6 +9,15 @@ function bearerToken(request: NextRequest) {
   return header?.startsWith("Bearer ") ? header.slice(7) : null;
 }
 
+function normalizeAgentVersion(value: unknown) {
+  if (!value) return undefined;
+
+  const cleaned = String(value).trim().replace(/\s+/g, " ");
+  if (!cleaned) return undefined;
+
+  return cleaned.slice(0, 40) || undefined;
+}
+
 export async function POST(request: NextRequest) {
   await initializeDatabase();
 
@@ -28,7 +37,7 @@ export async function POST(request: NextRequest) {
   terminal.status = TerminalStatus.ONLINE;
   terminal.ultimaConexao = new Date();
   if (body.ip) terminal.ip = body.ip;
-  if (body.versaoAgente) terminal.versaoAgente = body.versaoAgente;
+  if (body.versaoAgente) terminal.versaoAgente = normalizeAgentVersion(body.versaoAgente);
   if (body.sistemaOperacional) terminal.sistemaOperacional = body.sistemaOperacional;
   if (body.hostname) terminal.hostname = body.hostname;
   if (body.machineName) terminal.hostname = body.machineName;

@@ -9,6 +9,15 @@ import { Role } from "@/types";
 import { ensureUserTerminal, emitTerminalUpdated } from "@/lib/terminal-service";
 import { messages } from "@/lib/messages";
 
+function normalizeAgentVersion(value?: string | null) {
+  if (!value) return undefined;
+
+  const cleaned = String(value).trim().replace(/\s+/g, " ");
+  if (!cleaned) return undefined;
+
+  return cleaned.slice(0, 40) || undefined;
+}
+
 export async function POST(request: NextRequest) {
   await initializeDatabase();
   
@@ -62,12 +71,14 @@ export async function POST(request: NextRequest) {
   user.lastIp = ip;
   await userRepository.save(user);
 
+  const safeUserAgent = normalizeAgentVersion(request.headers.get("user-agent") ?? undefined);
+
   const { terminal } = await ensureUserTerminal({
     userId: user.id,
     userName: user.name,
     email: user.email,
     ip,
-    userAgent: request.headers.get("user-agent") ?? undefined,
+    userAgent: safeUserAgent,
   });
 
   emitTerminalUpdated({
