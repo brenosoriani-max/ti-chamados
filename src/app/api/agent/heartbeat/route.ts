@@ -30,6 +30,16 @@ export async function POST(request: NextRequest) {
   if (body.ip) terminal.ip = body.ip;
   if (body.versaoAgente) terminal.versaoAgente = body.versaoAgente;
   if (body.sistemaOperacional) terminal.sistemaOperacional = body.sistemaOperacional;
+  if (body.hostname) terminal.hostname = body.hostname;
+  if (body.machineName) terminal.hostname = body.machineName;
+  if (body.identificador) terminal.identificador = body.identificador;
+  if (body.equipmentUuid) terminal.equipmentUuid = body.equipmentUuid;
+  if (body.usuarioLogado) terminal.usuarioLogado = body.usuarioLogado;
+  if (body.processador) terminal.processador = body.processador;
+  if (body.memoriaRamGb) terminal.memoriaRamGb = Number(body.memoriaRamGb);
+  if (body.quantidadeMonitores) terminal.quantidadeMonitores = Number(body.quantidadeMonitores);
+  if (body.arquitetura) terminal.arquitetura = body.arquitetura;
+  if (body.windowsVersion) terminal.windowsVersion = body.windowsVersion;
 
   await terminalRepository.save(terminal);
   return NextResponse.json({ ok: true, terminalId: terminal.id });

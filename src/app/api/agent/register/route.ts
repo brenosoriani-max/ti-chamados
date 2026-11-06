@@ -20,9 +20,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Token do terminal obrigatorio" }, { status: 401 });
   }
 
+  const incomingIdentifier = body.identificador ?? body.hostname ?? body.machineName ?? body.nome ?? body.equipmentUuid;
   const data = {
-    nome: body.nome ?? body.hostname ?? body.identificador ?? "Terminal",
-    identificador: body.identificador ?? body.hostname,
+    nome: body.nome ?? body.hostname ?? body.machineName ?? incomingIdentifier ?? "Terminal",
+    identificador: incomingIdentifier ?? `terminal-${randomBytes(32).toString("hex")}`,
+    hostname: body.hostname ?? body.machineName ?? body.nome ?? undefined,
+    equipmentUuid: body.equipmentUuid ?? undefined,
     sistemaOperacional: body.sistemaOperacional ?? body.platform,
     ip: body.ip,
     versaoAgente: body.versaoAgente,
@@ -39,7 +42,10 @@ export async function POST(request: NextRequest) {
   if (token) {
     const existing = await terminalRepository.findOne({ where: { token } });
     if (existing) {
-      Object.assign(existing, data);
+      Object.assign(existing, data, {
+        nome: existing.nome || data.nome,
+        identificador: existing.identificador || data.identificador,
+      });
       await terminalRepository.save(existing);
       return NextResponse.json({ terminal: existing });
     }
@@ -49,10 +55,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Terminal nao autorizado" }, { status: 403 });
   }
 
-  let terminal = await terminalRepository.findOne({ where: { identificador: data.identificador } });
+  let terminal = await terminalRepository.findOne({
+    where: [{ identificador: data.identificador }, { equipmentUuid: data.equipmentUuid ?? undefined }],
+  });
 
   if (terminal) {
-    Object.assign(terminal, data);
+    Object.assign(terminal, data, {
+      nome: terminal.nome || data.nome,
+      identificador: terminal.identificador || data.identificador,
+    });
   } else {
     terminal = terminalRepository.create({
       ...data,

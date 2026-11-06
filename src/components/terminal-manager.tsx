@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import Link from "next/link";
 import { Cpu, HardDrive, Monitor, PlugZap, RefreshCw, Search, ShieldPlus, Trash2, User } from "lucide-react";
 import { io, type Socket } from "socket.io-client";
 import { toast } from "sonner";
@@ -10,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { TerminalStatusBadge } from "@/components/terminal-status-badge";
 import { formatDateTime } from "@/lib/utils";
-import { remoteSocketEvents } from "@/lib/remote/events";
+import { remoteSocketEvents } from "@shared/events";
 import { messages } from "@/lib/messages";
 
 type TerminalItem = {
@@ -37,6 +36,7 @@ export function TerminalManager({ initialTerminais }: { initialTerminais: Termin
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [openingId, setOpeningId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const filtered = useMemo(() => {
@@ -86,6 +86,40 @@ export function TerminalManager({ initialTerminais }: { initialTerminais: Termin
       action: { label: "Remover", onClick: () => deleteTerminal(terminal) },
       cancel: { label: "Cancelar", onClick: () => undefined },
     });
+  }
+
+  async function openRemoteSession(terminal: TerminalItem) {
+    if (!terminal.id) return;
+
+    setOpeningId(terminal.id);
+    try {
+      const response = await fetch("/api/remoto/abrir", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ terminalId: terminal.id }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data?.error || "Não foi possível abrir a sessão remota.");
+      }
+
+      if (data?.provider === "meshcentral" && data?.sessionUrl) {
+        window.open(data.sessionUrl, "_blank", "noopener,noreferrer");
+        return;
+      }
+
+      if (data?.route) {
+        window.location.href = data.route;
+        return;
+      }
+
+      throw new Error("Resposta inválida do provedor de sessão remota.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível abrir a sessão remota.");
+    } finally {
+      setOpeningId(null);
+    }
   }
 
   useEffect(() => {
@@ -178,7 +212,14 @@ export function TerminalManager({ initialTerminais }: { initialTerminais: Termin
                 <div className="flex items-center justify-between gap-3 border-t border-border/30 pt-4">
                   <p className="truncate text-xs text-muted-foreground">{activeUser ? `Sessao: ${activeUser}` : "Disponivel"}</p>
                   {terminal.status === "ONLINE" ? (
-                    <Button asChild className="gap-2"><Link href={`/terminais/${terminal.id}/remoto`}><PlugZap className="h-4 w-4" />Conectar</Link></Button>
+                    <Button
+                      onClick={() => void openRemoteSession(terminal)}
+                      disabled={openingId === terminal.id}
+                      className="gap-2"
+                    >
+                      <PlugZap className="h-4 w-4" />
+                      {openingId === terminal.id ? "Abrindo..." : "Conectar"}
+                    </Button>
                   ) : (
                     <Button disabled className="gap-2"><PlugZap className="h-4 w-4" />Conectar</Button>
                   )}

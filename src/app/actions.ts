@@ -21,8 +21,7 @@ import { Category } from "@/entities/Category";
 import { Role, TicketStatus, HistoryAction, NotificationType } from "@/types";
 import { ticketCreateSchema, ticketFinishSchema, ticketTransferSchema, registerSchema } from "@/lib/validators";
 import { getDueDates, nextTicketNumber } from "@/lib/tickets";
-import { ensureUserTerminal } from "@/lib/remote/services/terminal-service";
-import { emitTerminalUpdated } from "@/lib/remote/socket-bridge";
+import { ensureUserTerminal, emitTerminalUpdated } from "@/lib/terminal-service";
 import { messages } from "@/lib/messages";
 import {
   sendPasswordResetEmail,
@@ -90,7 +89,7 @@ export async function registerAction(_previousState: RegisterState, formData: Fo
     userName: user.name,
     email: user.email,
     ip,
-    userAgent,
+    userAgent: userAgent ?? undefined,
   });
 
   emitTerminalUpdated({

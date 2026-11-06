@@ -6,8 +6,7 @@ import { User } from "@/entities/User";
 import { createSessionToken, setAuthCookie } from "@/lib/auth";
 import { loginSchema } from "@/lib/validators";
 import { Role } from "@/types";
-import { ensureUserTerminal } from "@/lib/remote/services/terminal-service";
-import { emitTerminalUpdated } from "@/lib/remote/socket-bridge";
+import { ensureUserTerminal, emitTerminalUpdated } from "@/lib/terminal-service";
 import { messages } from "@/lib/messages";
 
 export async function POST(request: NextRequest) {
@@ -68,7 +67,7 @@ export async function POST(request: NextRequest) {
     userName: user.name,
     email: user.email,
     ip,
-    userAgent: request.headers.get("user-agent"),
+    userAgent: request.headers.get("user-agent") ?? undefined,
   });
 
   emitTerminalUpdated({

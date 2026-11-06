@@ -7,8 +7,7 @@ import { terminalUpdateSchema } from "@/lib/validators";
 import { Terminal } from "@/entities/Terminal";
 import { SessaoRemota } from "@/entities/SessaoRemota";
 import { messages } from "@/lib/messages";
-import { deleteTerminalById } from "@/lib/remote/services/terminal-service";
-import { emitTerminalUpdated } from "@/lib/remote/socket-bridge";
+import { deleteTerminalById, emitTerminalUpdated } from "@/lib/terminal-service";
 
 type RouteContext = {
   params: Promise<{ id: string }>;

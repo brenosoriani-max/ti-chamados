@@ -1,10 +1,9 @@
 import "reflect-metadata";
 import { redirect } from "next/navigation";
 import { Role } from "@/types";
-import { RemoteSessionViewer } from "@/components/remote-session-viewer";
-import { initializeDatabase, getRepository } from "@/lib/database";
+import { initializeDatabase } from "@/lib/database";
 import { getSession } from "@/lib/auth";
-import { Terminal } from "@/entities/Terminal";
+import { resolveRemoteSessionTarget } from "@/lib/meshcentral";
 
 export default async function RemoteTerminalPage({ params }: { params: Promise<{ id: string }> }) {
   await initializeDatabase();
@@ -13,18 +12,11 @@ export default async function RemoteTerminalPage({ params }: { params: Promise<{
   if (session.role !== Role.TECNICO && session.role !== Role.ADMIN) redirect("/tickets");
 
   const { id } = await params;
-  const terminalRepository = getRepository(Terminal);
-  const terminal = await terminalRepository.findOne({ where: { id } });
 
-  if (!terminal) {
-    return (
-      <div className="flex min-h-[50vh] items-center justify-center text-sm text-muted-foreground">
-        Terminal nao encontrado.
-      </div>
-    );
+  try {
+    const target = await resolveRemoteSessionTarget(id);
+    redirect(target.sessionUrl);
+  } catch {
+    redirect("/terminais");
   }
-
-  return (
-    <RemoteSessionViewer terminal={JSON.parse(JSON.stringify(terminal))} />
-  );
 }

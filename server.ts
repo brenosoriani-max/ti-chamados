@@ -41,9 +41,6 @@ app.prepare().then(async () => {
     cors: { origin: "*", methods: ["GET", "POST"] },
   });
 
-  const { setupRemoteSocket } = await import("./server/socket/setup");
-  setupRemoteSocket(io);
-
   io.on("connection", (socket: TicketSocket) => {
     socket.on("join-ticket", (ticketId: string) => {
       if (!socket.data?.user && !socket.role) return;

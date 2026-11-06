@@ -12,7 +12,7 @@ import { TicketMessage } from "@/entities/TicketMessage";
 import { TicketHistory } from "@/entities/TicketHistory";
 import { TicketAttachment } from "@/entities/TicketAttachment";
 import { messages } from "@/lib/messages";
-import { emitTicketMessage } from "@/lib/remote/socket-bridge";
+import { emitTicketMessage } from "@/lib/terminal-service";
 
 const MAX_MESSAGE_IMAGES = 3;
 const IMAGE_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);

@@ -7,14 +7,6 @@ import {
   getTerminalName,
 } from "../storage/store";
 import { collectSystemInfo } from "../system/info";
-import { startScreenShare, stopScreenShare } from "../webrtc/session";
-import {
-  handleMouseClick,
-  handleMouseMove,
-  handleMouseScroll,
-  handleKeyboardKey,
-  handleTypeText,
-} from "../input/controller";
 import { HEARTBEAT_INTERVAL_MS } from "../../../../packages/shared/src/events";
 import type { Socket } from "socket.io-client";
 
@@ -103,8 +95,6 @@ async function cleanupConnection() {
     socket.disconnect();
     socket = null;
   }
-
-  stopScreenShare();
 }
 
 function scheduleReconnect(reason?: string) {
@@ -172,8 +162,8 @@ export async function startAgent() {
 
     try {
       socket = createAgentSocket(serverUrl, token);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Falha ao criar socket";
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Falha ao criar socket";
       updateStatus("Erro de Conexão", message);
       scheduleReconnect(message);
       return;
@@ -229,29 +219,6 @@ export async function startAgent() {
       reconnectAttempts = 0;
       updateStatus("Online");
     });
-
-    socket.on(remoteSocketEvents.sessionCreate, async (payload: { sessaoId: string; monitorIndex?: number }) => {
-      if (!socket) {
-        return;
-      }
-
-      socket.emit(remoteSocketEvents.sessionAccept, {
-        sessaoId: payload.sessaoId,
-      });
-
-      await startScreenShare(socket, payload);
-    });
-
-    socket.on(remoteSocketEvents.sessionEnd, () => {
-      stopScreenShare();
-    });
-
-    socket.on(remoteSocketEvents.mouseMove, handleMouseMove);
-    socket.on(remoteSocketEvents.mouseClick, handleMouseClick);
-    socket.on(remoteSocketEvents.mouseScroll, handleMouseScroll);
-    socket.on(remoteSocketEvents.keyboardKeyDown, (payload) => handleKeyboardKey(payload, "down"));
-    socket.on(remoteSocketEvents.keyboardKeyUp, (payload) => handleKeyboardKey(payload, "up"));
-    socket.on(remoteSocketEvents.keyboardType, handleTypeText);
 
     heartbeatInterval = setInterval(() => {
       if (!socket || !socket.connected) {
